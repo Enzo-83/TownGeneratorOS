@@ -5,6 +5,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Pages allows one live deployment at a time. Queue rather than cancel: a
+# half-finished deploy that gets cancelled leaves the site on the previous
+# build, which is fine, but cancelling the *newer* one is not.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   html5:
     runs-on: ubuntu-latest
@@ -35,3 +42,37 @@ jobs:
         with:
           name: town-generator-html5
           path: Export/html5/bin
+
+      # Kept alongside the plain artifact above rather than replacing it, so a
+      # failed deploy still leaves you a bundle to download.
+      - name: Package for Pages
+        if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: Export/html5/bin
+
+  # Export/ is gitignored, so there is no branch for Pages to serve from — the
+  # bundle only exists as something CI just built. Hence deploying from the
+  # workflow rather than from a branch.
+  #
+  # ⚠️ This does nothing until Pages is turned on for the repository, under
+  # Settings → Pages → Source: GitHub Actions. Until then the job fails with a
+  # 404 from the Pages API; the build above is unaffected.
+  deploy:
+    needs: html5
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

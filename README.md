@@ -243,6 +243,23 @@ Left null, the generator behaves exactly as it did upstream.
 
 ---
 
+## Running it
+
+CI publishes the html5 build to GitHub Pages on every push to `master`:
+
+**<https://enzo-83.github.io/TownGeneratorOS/>**
+
+Every parameter below works there, so a map is a link rather than a file:
+
+```
+https://enzo-83.github.io/TownGeneratorOS/?size=24&seed=149&walls=1&river=1&districts=market:plaza:The Velvet Road
+```
+
+⚠️ **Pages has to be set to "GitHub Actions" as its source**, not to a branch. `Export/` is
+gitignored, so there is no branch holding a built bundle for Pages to serve — the deploy job
+hands it the one CI has just built. The bundle's paths are all relative, so it runs from the
+repository subpath without a base-href of any kind.
+
 ## Building
 
 ```
