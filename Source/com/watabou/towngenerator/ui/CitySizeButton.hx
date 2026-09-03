@@ -3,14 +3,12 @@ package com.watabou.towngenerator.ui;
 import com.watabou.coogee.Game;
 import com.watabou.utils.Random;
 
-import com.watabou.towngenerator.building.Model;
-
 class CitySizeButton extends Button {
 
 	private var size : Int;
 
 	public function new( label:String, minSize:Int, maxSize:Int ) {
-		super( label );
+		super( label, "A new city of this size" );
 
 		size = minSize + Std.int( Math.random() * (maxSize - minSize) );
 
@@ -20,9 +18,9 @@ class CitySizeButton extends Button {
 	private function onClick():Void {
 		StateManager.size = size;
 		StateManager.seed = Random.getSeed();
-		StateManager.pushParams();
 
-		new Model( size );
+		Tooltip.instance.set( null );
+		StateManager.regenerate();
 		Game.switchScene( TownScene );
 	}
 }

@@ -36,9 +36,22 @@ class Tooltip extends Bitmap {
 			stage.removeEventListener( MouseEvent.MOUSE_DOWN, onMouseMove );
 		}
 
+	/**
+		Beside the cursor, but kept on screen.
+
+		⚠️ Not simply `mouseX + 4`. The menu is against the right-hand edge, so
+		every tooltip it raises starts off the side of the window and the one
+		place a hint is most needed is the one place it could not be read.
+	**/
 	private function onMouseMove( e:MouseEvent ) {
-		x = parent.mouseX + 4;
-		y = parent.mouseY;
+		// The scene is scaled by Game.layout, so the stage is this many
+		// scene units across.
+		var limitX = stage.stageWidth / parent.scaleX;
+		var limitY = stage.stageHeight / parent.scaleY;
+
+		x = Math.max( 0, Math.min( parent.mouseX + 4, limitX - width - 1 ) );
+		y = Math.max( 0, Math.min( parent.mouseY, limitY - height - 1 ) );
+
 		e.updateAfterEvent();
 	}
 

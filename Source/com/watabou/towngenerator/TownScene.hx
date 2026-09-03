@@ -8,12 +8,12 @@ import com.watabou.coogee.Scene;
 import com.watabou.towngenerator.building.Model;
 import com.watabou.towngenerator.mapping.CityMap;
 import com.watabou.towngenerator.mapping.MapExporter;
-import com.watabou.towngenerator.ui.CitySizeButton;
+import com.watabou.towngenerator.ui.Menu;
 import com.watabou.towngenerator.ui.Tooltip;
 
 class TownScene extends Scene {
 
-	private var buttons	: Sprite;
+	private var menu	: Menu;
 	private var map		: CityMap;
 
 	public function new() {
@@ -22,27 +22,15 @@ class TownScene extends Scene {
 		map = new CityMap( Model.instance );
 		addChild( map );
 
+		menu = new Menu( map );
+		addChild( menu );
+
+		// After the menu, so a tooltip is drawn over the button it belongs to.
 		addChild( new Tooltip() );
-
-		buttons = new Sprite();
-		addChild( buttons );
-
-		var smallTown = new CitySizeButton( "Small Town", 6, 10 );
-		var largeTown = new CitySizeButton( "Large Town", 10, 15 );
-		var smallCity = new CitySizeButton( "Small City", 15, 24 );
-		var largeCity = new CitySizeButton( "Large City", 24, 40 );
-
-		var pos = 0.0;
-		for (btn in [smallTown, largeTown, smallCity, largeCity]) {
-			btn.y = pos;
-			pos += btn.height + 1;
-			buttons.addChild( btn );
-		}
-
 	}
 
-	// S saves vector, P saves raster. The released generator puts these behind
-	// a menu; a menu is a bigger job than the exporters themselves.
+	// The keys the exporters have always answered to. The menu does the same
+	// two things where they can be found.
 	override private function onKeyDown( e:KeyboardEvent ):Void {
 		super.onKeyDown( e );
 
@@ -73,7 +61,7 @@ class TownScene extends Scene {
 		var scMax = Math.max( scaleX, scaleY );
 		scale = (scMax / scMin > 2 ? scMax / 2 : scMin) * 0.5;
 
-		buttons.x = rWidth - buttons.width - 1;
-		buttons.y = 1;
+		menu.x = rWidth - menu.width - 1;
+		menu.y = 1;
 	}
 }

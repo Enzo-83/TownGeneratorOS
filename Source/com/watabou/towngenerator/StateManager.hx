@@ -2,6 +2,7 @@ package com.watabou.towngenerator;
 
 import com.watabou.utils.Random;
 import com.watabou.towngenerator.building.CityOptions;
+import com.watabou.towngenerator.building.Model;
 
 #if html5
 import js.Browser;
@@ -94,6 +95,22 @@ class StateManager {
 		options.landmarks	= CityOptions.parseLandmarks( landmarks );
 
 		return options;
+	}
+
+	/**
+		Rebuilds the city from the parameters as they now stand, and puts them
+		in the address bar.
+
+		⚠️ **Both halves matter.** The size buttons used to push a fresh seed
+		into the URL and then build with `new Model( size )`, which falls back
+		to the seed inside the stale `Model.options` — so the address bar
+		described a city that was never generated, and reloading it gave you a
+		different map. Anything that regenerates goes through here.
+	**/
+	public static function regenerate():Void {
+		pushParams();
+		Model.options = toOptions();
+		new Model( size, seed );
 	}
 
 	public static function pushParams() {

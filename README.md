@@ -106,9 +106,10 @@ This fork adds:
   one ink, so a bare glyph over a block of houses has to be picked out of the hatching
   before it can be read. On screen the halo is eight offset copies of the text; in SVG it
   is a stroke under the fill, so it stays one element per label.
-- **A legibility floor** under every label, not just the district names. Landmark names,
-  the population line and the scale caption are sized as a share of the city's radius, and
-  on a small town that share came out at half the size at which anything is readable.
+- **A legibility floor** under every label, as a share of the city's radius rather than a
+  constant. The view and the export both scale to fit the city, so a size in map units is
+  not a size on the page: an absolute floor left a size-6 town's population line nearly as
+  large as its own title, and a metropolis's district names too small to read.
 - **The settlement's name** above the map, and a **population / building count** beneath it.
 - **A scale bar**, in map units, so it stays truthful at any zoom.
 
@@ -144,7 +145,23 @@ Both the screen and the SVG take their labels from the same `LabelPlan`, so the 
 disagree about which labels a map has — which they otherwise would, since collision
 rejection depends on the order labels are placed in.
 
-The released generator puts these behind a menu. A menu is a bigger job than the exporters.
+Both are also in the menu, which is where anyone who has not read this will find them.
+
+### The menu
+
+Down the right-hand edge: the four city sizes, **New City** for another one the same size,
+toggles for **walls**, the inner **ring**, the **citadel** and the **plaza**, and the two
+exports. Each has a tooltip.
+
+A toggle reads its state from the finished model rather than from the parameters, so it
+shows what the map on screen actually has. Those differ whenever a parameter was left to
+be rolled, which is the default for the walls, the citadel and the plaza.
+
+Everything the menu does goes through `StateManager.regenerate`, which rebuilds the city
+*and* rewrites the address bar. ⚠️ The size buttons previously did half of that: they
+pushed a fresh seed into the URL and then rebuilt from the seed inside the stale
+`Model.options`, so the address bar described a city that was never drawn and reloading it
+gave you a different map.
 
 ---
 

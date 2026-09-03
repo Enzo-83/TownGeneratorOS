@@ -14,7 +14,8 @@ Working notes for picking this fork up cold. The [README](README.md) says what t
 - **District and settlement names**, fitted labels, landmarks, population, scale bar
 - **Custom district names** — `districts=` takes `ward:zone:Name`
 - **Label collision rejection**, halos, and one `LabelPlan` behind both renderers
-- **SVG and PNG export** on the `S` and `P` keys
+- **SVG and PNG export** on the `S` and `P` keys, and in the menu
+- **A menu** — sizes, reroll, walls/ring/citadel/plaza toggles, both exports
 
 ---
 
@@ -62,11 +63,12 @@ Three things this turned up that are worth not rediscovering:
   0.57, so boxes built from 0.46 sat a tenth of a label's width inside each other and the
   test passed them. `BOX_RATIO`/`BOX_HEIGHT` are separate and deliberately worst-case. A
   fitting ratio wants the average; a box wants the widest name on the map.
-- **`MIN_FIT` is now a floor under *every* label**, applied in `LabelPlan.reserve`, not
-  just the district names that are sized against a patch. Landmark names, the population
-  line and the scale caption are all a share of `cityRadius`, and at size 15 that share was
-  about half the size at which anything is readable — the names the caller cared about most
-  were the least legible text on the map.
+- **The legibility floor is a share of `cityRadius`, not a constant in city units**, and it
+  applies to *every* label in `LabelPlan.reserve` rather than only the district names. Both
+  the view and the export scale to fit the city, so a size in map units is not a size on the
+  page — the old absolute 3.6 was a seventh of a size-6 town's radius and a thirtieth of a
+  metropolis's. ⚠️ It was tried as an absolute first, and a size-6 town came back with a
+  population line nearly as large as its own title.
 - **A landmark's name is measured out from its dot**, not offset by a share of the radius.
   Once the size had a floor under it, a fixed share put the name straight through its own
   marker on a small town.
@@ -81,12 +83,38 @@ collides now prints a ring through its neighbour.
 > its `#labels` group into a 2048×2048 host div, and compare `getBoundingClientRect()`
 > pairwise. That is the browser's own glyph metrics rather than our estimate of them, so it
 > catches exactly the `GLYPH_RATIO` class of bug. `?size=24&seed=149&…` went from ten
-> overlapping pairs to none.
+> overlapping pairs to none. **Test the landmark dots against the labels in the same pass**
+> — a marker is not a label and nothing else notices when a name is printed through one.
+>
+> ⛔ **It found a second bug worth keeping the harness for.** SVG anchors text at its
+> baseline while the plan gives a centre, and the shift between them was applied to the `y`
+> of the `translate` — *outside* the rotation. That offset is along the glyphs' own down
+> axis, not the page's, so a label rotated 90° came out a third of its height off along
+> page x: it disagreed with the screen renderer, and sat outside the box the collision test
+> had reserved for it. The shift now goes on the `<text>` inside the transform.
 
-### 3. A menu — moderate
+### 3. ✅ A menu — done
 
-Export and labels are behind undiscoverable keypresses. `ui/` has `Button.hx` and
-`CitySizeButton.hx` to build on. This is a bigger job than the exporters were.
+`ui/Menu.hx`, down the right-hand edge: the four sizes, **New City**, toggles for walls /
+ring / citadel / plaza, and both exports. `Button` grew a `hint` for the tooltip and a
+`setLabel`; `ActionButton` and `ToggleButton` sit on top of it. `S` and `P` still work.
+
+A toggle reads its state from the finished `Model` (`model.wall != null`), not from
+`StateManager`, so it shows what the map actually has. Those differ whenever a parameter
+was left to be rolled, which is the default for walls, citadel and plaza.
+
+Two things this turned up:
+
+- ⛔ **The size buttons wrote a seed to the URL and then built with a different one.**
+  `CitySizeButton` pushed `Random.getSeed()` into the address bar and called
+  `new Model( size )`, whose seed argument defaults to -1 and falls back to `opts.seed` —
+  the seed inside the `Model.options` built at startup, which nothing ever refreshed. So
+  the URL described a city that was never drawn, and clicking the same size twice gave the
+  same map twice. Everything that regenerates now goes through `StateManager.regenerate`,
+  which does both halves. Verified: click **New City**, then reload the URL it wrote, and
+  the exported SVG hashes identically.
+- **`Tooltip` clamps itself to the window.** It was `mouseX + 4`, and the menu is against
+  the right-hand edge — so every hint the menu raised started off the side of the screen.
 
 ### 4. Rivers — large, and the only large thing worth doing
 
