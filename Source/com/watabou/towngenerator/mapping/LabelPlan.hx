@@ -59,15 +59,19 @@ typedef ScaleBar = {
 **/
 class LabelPlan {
 
-	// Label sizes, as a share of cityRadius — floored at `LabelView.MIN_FIT`
-	// by `reserve`, because a share of the radius is not a legible size on a
-	// small town. At size 6 a landmark's name came out at half the floor, and
-	// the names of the places the caller cared about most were the least
-	// readable text on the map.
+	// Label sizes, as a share of cityRadius. Everything on the map is a share
+	// of it, because the view and the export both scale to fit the city — so
+	// a share is what renders at a constant size, and a constant in city
+	// units is what does not.
 	static inline var TITLE		= 0.14;
 	static inline var SUBTITLE	= 0.038;
 	static inline var CAPTION	= 0.045;
 	static inline var LANDMARK	= 0.030;
+
+	// The smallest label worth printing, and the floor under every label
+	// `reserve` places. Matches the 3.6 city units this was tuned at on a
+	// size-24 city, where cityRadius is about 112.
+	static inline var LEGIBLE	= 0.032;
 
 	// A landmark's dot, and the gap between it and the name below it.
 	static inline var MARKER	= 0.011;
@@ -83,6 +87,7 @@ class LabelPlan {
 	public var dropped	: Array<String>;
 
 	var taken	: Array<Rectangle>;
+	var floor	: Float;
 
 	function new() {
 		labels	= [];
@@ -94,6 +99,8 @@ class LabelPlan {
 	public static function build( model:Model ):LabelPlan {
 		var plan = new LabelPlan();
 		var r = model.cityRadius;
+
+		plan.floor = r * LEGIBLE;
 
 		if (model.cityName != null) {
 			plan.reserve( model.cityName, new Point( 0, -r * 1.16 ), 0, r * TITLE );
@@ -116,7 +123,7 @@ class LabelPlan {
 			var centre = patch.shape.center;
 			plan.markers.push( { at: centre, r: r * MARKER } );
 
-			var size = Math.max( r * LANDMARK, LabelView.MIN_FIT );
+			var size = Math.max( r * LANDMARK, plan.floor );
 
 			// Measured out from the dot rather than set as a share of the
 			// radius: the size has a floor under it, so on a small town a
@@ -144,8 +151,8 @@ class LabelPlan {
 
 				var name = patch.ward.name;
 				var placement = byCaller ?
-					LabelView.fitInsistent( name, patch.shape, plan.taken ) :
-					LabelView.fit( name, patch.shape, plan.taken );
+					LabelView.fitInsistent( name, patch.shape, plan.floor, plan.taken ) :
+					LabelView.fit( name, patch.shape, plan.floor, plan.taken );
 
 				if (placement == null)
 					plan.dropped.push( name );
@@ -181,7 +188,7 @@ class LabelPlan {
 		return LabelView.clear( text, { at: at, angle: 0.0, size: size }, taken );
 
 	function reserve( text:String, at:Point, angle:Float, size:Float ):Void {
-		var legible = Math.max( size, LabelView.MIN_FIT );
+		var legible = Math.max( size, floor );
 		labels.push( { text: text, at: at, angle: angle, size: legible } );
 		taken.push( LabelView.box( text, at, angle, legible ) );
 	}

@@ -37,11 +37,6 @@ class LabelView {
 	// Big enough that scaling down never softens the glyphs.
 	static inline var BASE_SIZE = 64;
 
-	// Below this, in city units, a label is unreadable clutter; skip it.
-	// `LabelPlan` applies it as a floor to every label it places, not only to
-	// the district names that are sized against a patch.
-	public static inline var MIN_FIT = 3.6;
-
 	static inline var FONT = "Georgia,Times New Roman,serif";
 
 	// How wide a glyph is relative to its point size, and how much of a
@@ -94,17 +89,21 @@ class LabelView {
 	/**
 		Where a district label wants to sit, or null if it cannot fit legibly.
 
+		`floor` is the smallest size worth printing, which the caller supplies
+		because it depends on the map rather than on the text. ⚠️ **It is not a
+		constant in city units.** The view scales to fit `cityRadius`, so a
+		label of a given size in city units renders larger on a small town than
+		on a metropolis; an absolute floor made a size-6 town's population line
+		nearly as large as its own title. `LabelPlan` derives it from the
+		radius, which is what makes it the same size on screen for every map.
+
 		`avoid` is the boxes already spoken for. The largest size at any angle
 		that clears all of them wins; passing null skips the test entirely and
 		gives the plain best fit, which is what this did before collisions
 		were considered at all.
 	**/
-	public static function fit( text:String, shape:Polygon, ?avoid:Array<Rectangle> ):Null<Placement> {
-		var candidates = sizeByAngle( text, shape );
-		if (candidates.length == 0)
-			return null;
-
-		for (option in options( text, shape ))
+	public static function fit( text:String, shape:Polygon, floor:Float, ?avoid:Array<Rectangle> ):Null<Placement> {
+		for (option in options( text, shape, floor ))
 			if (avoid == null || clear( text, option, avoid ))
 				return option;
 
@@ -117,14 +116,14 @@ class LabelView {
 		is preferred over shrinking the best one, and a bigger placement is
 		never passed over for a smaller one.
 	**/
-	static function options( text:String, shape:Polygon ):Array<Placement> {
+	static function options( text:String, shape:Polygon, floor:Float ):Array<Placement> {
 		var centre = shape.center;
 
 		var result:Array<Placement> = [];
 		for (c in sizeByAngle( text, shape ))
 			for (shrink in SHRINK) {
 				var size = c.size * shrink;
-				if (size >= MIN_FIT)
+				if (size >= floor)
 					result.push( { at: centre, angle: c.angle, size: size } );
 			}
 
@@ -140,12 +139,12 @@ class LabelView {
 		A district the caller named by hand in `districts=` is the one label on
 		the map that must not silently vanish: the whole reason for typing a
 		name is to see it printed. When nothing legible fits — a patch too
-		small, or every size already taken — it is printed at `MIN_FIT` anyway,
+		small, or every size already taken — it is printed at the floor anyway,
 		overflowing its patch. Reserve these before the generated names, and
 		the generated names are the ones that move.
 	**/
-	public static function fitInsistent( text:String, shape:Polygon, ?avoid:Array<Rectangle> ):Null<Placement> {
-		var placed = fit( text, shape, avoid );
+	public static function fitInsistent( text:String, shape:Polygon, floor:Float, ?avoid:Array<Rectangle> ):Null<Placement> {
+		var placed = fit( text, shape, floor, avoid );
 		if (placed != null)
 			return placed;
 
@@ -156,13 +155,13 @@ class LabelView {
 		// Nothing clears everything, so take the least bad rather than simply
 		// the biggest: two hand-named districts in neighbouring patches are
 		// both going to be printed, and where they touch is worth choosing.
-		var choices = options( text, shape );
+		var choices = options( text, shape, floor );
 		if (choices.length == 0)
 			// Not even the smallest legible size fits the patch. Print it at
-			// MIN_FIT anyway, overflowing — a name the caller typed is the one
-			// label on the map that must never silently disappear.
+			// the floor anyway, overflowing — a name the caller typed is the
+			// one label on the map that must never silently disappear.
 			for (c in candidates)
-				choices.push( { at: shape.center, angle: c.angle, size: MIN_FIT } );
+				choices.push( { at: shape.center, angle: c.angle, size: floor } );
 
 		var best:Placement = null;
 		var least = Math.POSITIVE_INFINITY;

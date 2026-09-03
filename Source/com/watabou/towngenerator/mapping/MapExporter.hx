@@ -136,7 +136,7 @@ class MapExporter {
 		// the fill here. `paint-order` keeps it to one element per label, so
 		// the group is still something you can pull apart in an editor.
 		for (label in plan.labels)
-			b.add( text( label.text, label.at.x, label.at.y + label.size * LabelView.BASELINE,
+			b.add( text( label.text, label.at.x, label.at.y,
 				label.size, LabelView.degrees( label.angle ),
 				'stroke="$paper" stroke-width="${f(label.size * LabelView.HALO * 2)}" stroke-linejoin="round" paint-order="stroke"' ) );
 
@@ -162,11 +162,22 @@ class MapExporter {
 
 	// ------------------------------------------------------------ helpers
 
+	/**
+		One label, centred on (`x`, `y`).
+
+		⚠️ **The baseline shift goes inside the rotation, not before it.** SVG
+		anchors text at its baseline and the plan gives a centre, so the two
+		differ by `BASELINE` — but that offset is along the glyphs' own down
+		axis, not the page's. Applied outside, a label rotated 90° came out a
+		third of its height off along the page's x instead, which put it
+		somewhere neither the screen renderer nor the collision box had it.
+	**/
 	static function text( s:String, x:Float, y:Float, size:Float, rotation:Float, extra = "" ):String {
 		var escaped = StringTools.htmlEscape( s );
+		var baseline = f( size * LabelView.BASELINE );
 		return rotation == 0 ?
-			'<text x="${f(x)}" y="${f(y)}" font-size="${f(size)}" $extra>$escaped</text>\n' :
-			'<text transform="translate(${f(x)},${f(y)}) rotate(${f(rotation)})" font-size="${f(size)}" $extra>$escaped</text>\n';
+			'<text x="${f(x)}" y="${f(y + size * LabelView.BASELINE)}" font-size="${f(size)}" $extra>$escaped</text>\n' :
+			'<text transform="translate(${f(x)},${f(y)}) rotate(${f(rotation)})" y="$baseline" font-size="${f(size)}" $extra>$escaped</text>\n';
 	}
 
 	static function shape( poly:Polygon, fill:String, stroke:String, width:Float ):String {
