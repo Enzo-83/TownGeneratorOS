@@ -81,9 +81,14 @@ Upstream's build reads only `size` and `seed`. This fork adds the rest:
 | `districts` | `ward:zone,ward:zone,…` | none |
 
 Ward names for `districts`: `craftsmen`, `merchant`, `cathedral`, `administration`,
-`slum`, `patriciate`, `market`, `military`, `park`, `gate`, `farm`, `common`.
+`slum`, `patriciate`, `market`, `military`, `park`, `gate`, `farm`.
 An unknown ward or zone name is skipped, so one typo costs you a district rather than the
 whole map. A missing zone defaults to `city`.
+
+`CommonWard` and `Castle` are deliberately not placeable. `CommonWard` is the base class
+the residential wards extend, and its constructor takes density parameters as well —
+building one with just `(model, patch)` leaves `minSq` null, and `Ward.createAlleys` then
+subdivides until the stack gives out. `Castle` belongs to the citadel and raises its own wall.
 
 ```
 ?size=24&seed=149&walls=1&innerwall=1&core=6&districts=craftsmen:core,market:plaza,park:between

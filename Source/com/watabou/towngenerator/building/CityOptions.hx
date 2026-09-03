@@ -49,6 +49,11 @@ class CityOptions {
 
 	public function new() {}
 
+	// Concrete wards only. CommonWard is deliberately absent: it is the base
+	// class, its constructor takes minSq/gridChaos/sizeChaos as well, and
+	// building one with just (model, patch) leaves minSq null — which makes
+	// Ward.createAlleys recurse until the stack gives out. Castle is absent
+	// too; it belongs to the citadel and builds its own wall.
 	public static var WARD_TYPES:Map<String, Class<Ward>> = [
 		"craftsmen"			=> CraftsmenWard,
 		"merchant"			=> MerchantWard,
@@ -60,8 +65,7 @@ class CityOptions {
 		"military"			=> MilitaryWard,
 		"park"				=> Park,
 		"gate"				=> GateWard,
-		"farm"				=> Farm,
-		"common"			=> CommonWard
+		"farm"				=> Farm
 	];
 
 	public static var ZONES:Map<String, PlacementZone> = [
