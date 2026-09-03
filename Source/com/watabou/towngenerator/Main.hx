@@ -22,6 +22,7 @@ class Main extends Game {
 		uiFont.letterSpacing = 1;
 		uiFont.baseLine = 8;
 
+		Model.options = StateManager.toOptions();
 		new Model( StateManager.size, StateManager.seed );
 
 		super( TownScene );

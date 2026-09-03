@@ -6,8 +6,10 @@
 	
 	<source path="Source" />
 
-	<haxelib name="lime" version="7.3.0" />
-	<haxelib name="openfl" version="8.9.0" />
+	<!-- Repinned for Haxe 4.x: openfl 8.9.0 still used @:fakeEnum, which
+	     Haxe 4 removed, so the original pins cannot build on a current compiler. -->
+	<haxelib name="lime" version="8.3.2" />
+	<haxelib name="openfl" version="9.5.2" />
 	<haxelib name="msignal" version="1.2.5" />
 
 	<!-- General -->

@@ -41,6 +41,9 @@ class Ward {
 			if (model.wall != null && model.wall.bordersBy( patch, v0, v1 ))
 				// Not too close to the wall
 				insetDist.push( MAIN_STREET/2 );
+			else if (model.innerWall != null && model.innerWall.bordersBy( patch, v0, v1 ))
+				// Nor built right up against the inner ring
+				insetDist.push( MAIN_STREET/2 );
 			else {
 				var onStreet = innerPatch && (model.plaza != null && model.plaza.shape.findEdge( v1, v0 ) != -1);
 				if (!onStreet)
@@ -91,9 +94,11 @@ class Ward {
 
 		// For every vertex: if this belongs only
 		// to patches within city, then 1, otherwise 0
+		// The literals are floats so the comprehension unifies as Array<Float>:
+		// the middle branch is fractional and Haxe 4 infers from the first.
 		var density = [for (v in patch.shape)
-			if (model.gates.contains( v )) 1 else
-				model.patchByVertex( v ).every( function( p:Patch ) return p.withinCity ) ? 2 * Random.float() : 0
+			if (model.gates.contains( v )) 1.0 else
+				model.patchByVertex( v ).every( function( p:Patch ) return p.withinCity ) ? 2 * Random.float() : 0.0
 		];
 
 		geometry = geometry.filter( function( building:Polygon ) {

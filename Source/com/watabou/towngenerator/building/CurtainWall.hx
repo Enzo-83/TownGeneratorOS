@@ -37,6 +37,9 @@ class CurtainWall {
 		}
 
 		segments = [for (v in shape) true];
+		// A wall that never has buildTowers() called on it — the inner ring —
+		// still gets iterated when the map is drawn.
+		towers = [];
 
 		buildGates( real, model, reserved );
 	}

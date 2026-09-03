@@ -71,6 +71,9 @@ class CityMap extends Sprite {
 		var walls = new Shape();
 		addChild( walls );
 
+		if (model.innerWall != null)
+			drawInnerWall( walls.graphics, model.innerWall );
+
 		if (model.wall != null)
 			drawWall( walls.graphics, model.wall, false );
 
@@ -95,6 +98,27 @@ class CityMap extends Sprite {
 
 		for (t in wall.towers)
 			drawTower( g, t, Brush.THICK_STROKE * (large ? 1.5 : 1) );
+	}
+
+	/**
+		The inner ring, drawn as what it is: a boundary rather than a defence.
+		Thinner than the curtain wall, no towers, and left open at its gates —
+		it marks where the city ends, it does not hold the line there.
+	**/
+	private function drawInnerWall( g:Graphics, wall:CurtainWall ):Void {
+		g.lineStyle( Brush.NORMAL_STROKE * 1.5, palette.dark );
+
+		var len = wall.shape.length;
+		for (i in 0...len) {
+			var v0 = wall.shape[i];
+			var v1 = wall.shape[(i + 1) % len];
+
+			if (wall.gates.contains( v0 ) || wall.gates.contains( v1 ))
+				continue;
+
+			g.moveToPoint( v0 );
+			g.lineToPoint( v1 );
+		}
 	}
 
 	private function drawTower( g:Graphics, p:Point, r:Float ) {

@@ -11,6 +11,8 @@ import com.watabou.utils.MathUtils;
 import com.watabou.utils.Random;
 
 import com.watabou.towngenerator.wards.*;
+import com.watabou.towngenerator.building.CityOptions.PlacementZone;
+import com.watabou.towngenerator.building.CityOptions.WardPlacement;
 
 using com.watabou.utils.PointExtender;
 using com.watabou.utils.ArrayExtender;
@@ -31,6 +33,14 @@ class Model {
 	private var plazaNeeded		: Bool;
 	private var citadelNeeded	: Bool;
 	private var wallsNeeded		: Bool;
+
+	private var innerWallNeeded	: Bool;
+	private var coreSize		: Int;
+	private var placements		: Array<WardPlacement>;
+
+	// Set this before constructing a Model to steer generation.
+	// Left null, the generator behaves exactly as it did upstream.
+	public static var options	: CityOptions = null;
 
 	public static var WARDS:Array<Class<Ward>> = [
 		CraftsmenWard, CraftsmenWard, MerchantWard, CraftsmenWard, CraftsmenWard, Cathedral,
@@ -54,6 +64,14 @@ class Model {
 
 	public var border	: CurtainWall;
 	public var wall		: CurtainWall;
+	// The inner ring, when there is one. Never defensible: no towers.
+	public var innerWall	: CurtainWall;
+	// The patches the inner ring encloses.
+	public var core		: Array<Patch>;
+
+	// Placements that could not be honoured as asked, so a caller can
+	// tell "the district is where I said" from "the district is somewhere".
+	public var placementWarnings	: Array<String>;
 
 	public var cityRadius	: Float;
 
@@ -68,12 +86,26 @@ class Model {
 
 	public function new( nPatches=-1, seed=-1 ) {
 
-		if (seed > 0) Random.reset( seed );
-		this.nPatches = nPatches != -1 ? nPatches : 15;
+		var opts = options != null ? options : new CityOptions();
 
-		plazaNeeded		= Random.bool();
-		citadelNeeded	= Random.bool();
-		wallsNeeded		= Random.bool();
+		if (seed > 0) Random.reset( seed )
+		else if (opts.seed > 0) Random.reset( opts.seed );
+
+		this.nPatches = nPatches != -1 ? nPatches : (opts.size > 0 ? opts.size : 15);
+
+		// These three are always drawn, in this order, even when the caller
+		// overrides them — otherwise a seed would stop reproducing its city.
+		var rolledPlaza		= Random.bool();
+		var rolledCitadel	= Random.bool();
+		var rolledWalls		= Random.bool();
+
+		plazaNeeded		= opts.plaza	!= null ? opts.plaza	: rolledPlaza;
+		citadelNeeded	= opts.citadel	!= null ? opts.citadel	: rolledCitadel;
+		wallsNeeded		= opts.walls	!= null ? opts.walls	: rolledWalls;
+
+		innerWallNeeded	= opts.innerWall;
+		coreSize		= opts.coreSize;
+		placements		= opts.placements != null ? opts.placements : [];
 
 		do try {
 			build();
@@ -167,6 +199,77 @@ class Model {
 
 			gates = gates.concat( castle.wall.gates );
 		}
+
+		buildInnerWall( reserved );
+	}
+
+	/**
+		The second ring. It is deliberately not a fortification: it is built
+		with `real = false`, so it follows patch boundaries exactly, splits no
+		patch to make room for a road, and gets no towers. Its gates are left
+		out of `Model.gates` on purpose — streets already cross it on their way
+		from the outer gates to the plaza, and anchoring more streets to it is
+		the quickest way to make street building fail.
+	**/
+	private function buildInnerWall( reserved:Array<Point> ):Void {
+		if (!innerWallNeeded)
+			return;
+
+		// Always leave a couple of patches outside it, or the "inner" ring
+		// is just the city wall drawn twice.
+		var size = Std.int( Math.min( coreSize, inner.length - 2 ) );
+		if (size < 2)
+			return;
+
+		core = selectCore( size );
+		for (patch in core)
+			patch.withinInnerWall = true;
+
+		innerWall = new CurtainWall( false, this, core, reserved );
+
+		if (innerWall.shape.length < 3)
+			throw new Error( "Bad inner ring shape!" );
+	}
+
+	/**
+		Grows the enclosed core outwards from the centre, always taking the
+		patch nearest the middle that already touches what we have. Slicing
+		the distance-sorted list instead would be simpler and would sometimes
+		hand `findCircumference` a disconnected set, which does not terminate.
+	**/
+	private function selectCore( size:Int ):Array<Patch> {
+		var result = [inner[0]];
+
+		while (result.length < size) {
+			var best:Patch = null;
+			var bestDist = Math.POSITIVE_INFINITY;
+
+			for (patch in inner) {
+				if (result.contains( patch ))
+					continue;
+
+				var adjacent = false;
+				for (chosen in result)
+					if (patch.shape.borders( chosen.shape )) {
+						adjacent = true;
+						break;
+					}
+				if (!adjacent)
+					continue;
+
+				var d = patch.shape.center.length;
+				if (d < bestDist) {
+					bestDist = d;
+					best = patch;
+				}
+			}
+
+			if (best == null)
+				break;
+			result.push( best );
+		}
+
+		return result;
 	}
 
 	public static function findCircumference( wards:Array<Patch> ):Polygon {
@@ -358,6 +461,10 @@ class Model {
 					unassigned.remove( patch );
 				}
 
+		// Deliberately placed wards get first pick, before the shuffled list
+		// below takes what is left.
+		placeWards( unassigned );
+
 		var wards = WARDS.copy();
 		// some shuffling
 		for (i in 0...Std.int(wards.length / 10)) {
@@ -409,6 +516,56 @@ class Model {
 				patch.ward = Random.bool( 0.2 ) && patch.shape.compactness >= 0.7 ?
 					new Farm( this, patch ) :
 					new Ward( this, patch );
+	}
+
+	/**
+		Places the caller's pinned wards. A zone that cannot be satisfied falls
+		back to anywhere in the city rather than throwing, because a spec the
+		layout can't honour would otherwise rebuild the city forever. Every
+		compromise is recorded in `placementWarnings`.
+	**/
+	private function placeWards( unassigned:Array<Patch> ):Void {
+		placementWarnings = [];
+
+		for (placement in placements) {
+			var name = Type.getClassName( placement.ward ).split( "." ).pop();
+
+			var candidates = unassigned.filter(
+				function( patch:Patch ) return matchesZone( patch, placement.zone ) );
+
+			if (candidates.length == 0) {
+				candidates = unassigned.filter( function( patch:Patch ) return patch.withinCity );
+				if (candidates.length > 0)
+					placementWarnings.push(
+						'$name: nothing free in the zone asked for, placed elsewhere in the city' );
+			}
+
+			if (candidates.length == 0) {
+				placementWarnings.push( '$name: no free patch left, not placed' );
+				continue;
+			}
+
+			var rateFunc = Reflect.field( placement.ward, "rateLocation" );
+			var best = rateFunc == null ?
+				candidates.random() :
+				candidates.min( function( patch:Patch )
+					return Reflect.callMethod( placement.ward, rateFunc, [this, patch] ) );
+
+			best.ward = Type.createInstance( placement.ward, [this, best] );
+			unassigned.remove( best );
+		}
+	}
+
+	private function matchesZone( patch:Patch, zone:PlacementZone ):Bool {
+		if (!patch.withinCity)
+			return false;
+
+		return switch (zone) {
+			case Core:			patch.withinInnerWall;
+			case BetweenWalls:	!patch.withinInnerWall;
+			case WithinCity:	true;
+			case NextToPlaza:	plaza != null && patch.shape.borders( plaza.shape );
+		}
 	}
 
 	private function buildGeometry()

@@ -1,0 +1,38 @@
+name: build
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  html5:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: 4.3.7
+
+      # Pinned to match project.xml. The versions the upstream project pinned
+      # (lime 7.3.0 / openfl 8.9.0) predate Haxe 4 and cannot compile on it.
+      - name: Install haxelibs
+        run: |
+          haxelib install msignal 1.2.5 --always --quiet
+          haxelib install lime 8.3.2 --always --quiet
+          haxelib install openfl 9.5.2 --always --quiet
+          haxelib run lime setup -y
+
+      - name: Build html5
+        run: haxelib run lime build html5
+
+      - name: Check the bundle was produced
+        run: test -s Export/html5/bin/TownGenerator.js
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: town-generator-html5
+          path: Export/html5/bin

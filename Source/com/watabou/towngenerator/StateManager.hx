@@ -1,6 +1,7 @@
 package com.watabou.towngenerator;
 
 import com.watabou.utils.Random;
+import com.watabou.towngenerator.building.CityOptions;
 
 #if html5
 import js.Browser;
@@ -9,11 +10,27 @@ import js.html.URLSearchParams;
 
 class StateManager {
 
-	private static inline var SIZE = "size";
-	private static inline var SEED = "seed";
+	private static inline var SIZE			= "size";
+	private static inline var SEED			= "seed";
+	private static inline var PLAZA			= "plaza";
+	private static inline var CITADEL		= "citadel";
+	private static inline var WALLS			= "walls";
+	private static inline var INNER_WALL	= "innerwall";
+	private static inline var CORE			= "core";
+	private static inline var DISTRICTS		= "districts";
 
 	public static var size	: Int = 15;
 	public static var seed	: Int = -1;
+
+	// Null means "let the generator roll for it".
+	public static var plaza		: Null<Bool> = null;
+	public static var citadel	: Null<Bool> = null;
+	public static var walls		: Null<Bool> = null;
+
+	public static var innerWall	: Bool = false;
+	public static var coreSize	: Int = 5;
+	// Kept as written so it can be put back in the URL verbatim.
+	public static var districts	: String = "";
 
 	public static function pullParams() {
 		#if html5
@@ -24,8 +41,45 @@ class StateManager {
 
 			var seed1 = Std.parseInt( params.get( SEED ) );
 			if (seed1 != null) seed = (seed1 > 0 ? seed1 : -1);
+
+			plaza	= boolParam( params, PLAZA );
+			citadel	= boolParam( params, CITADEL );
+			walls	= boolParam( params, WALLS );
+
+			var inner1 = boolParam( params, INNER_WALL );
+			if (inner1 != null) innerWall = inner1;
+
+			var core1 = Std.parseInt( params.get( CORE ) );
+			if (core1 != null) coreSize = (core1 >= 2 ? (core1 <= 30 ? core1 : 30) : 2);
+
+			var districts1 = params.get( DISTRICTS );
+			if (districts1 != null) districts = districts1;
 		}
 		#end
+	}
+
+	#if html5
+	private static function boolParam( params:URLSearchParams, name:String ):Null<Bool> {
+		var value = params.get( name );
+		if (value == null)
+			return null;
+		return value == "1" || value.toLowerCase() == "true";
+	}
+	#end
+
+	public static function toOptions():CityOptions {
+		var options = new CityOptions();
+
+		options.size		= size;
+		options.seed		= seed;
+		options.plaza		= plaza;
+		options.citadel		= citadel;
+		options.walls		= walls;
+		options.innerWall	= innerWall;
+		options.coreSize	= coreSize;
+		options.placements	= CityOptions.parsePlacements( districts );
+
+		return options;
 	}
 
 	public static function pushParams() {
@@ -37,7 +91,17 @@ class StateManager {
 		#if html5
 		var loc = Browser.location;
 		var search1 = loc.search;
+
 		var search2 = '?$SIZE=$size&$SEED=$seed';
+		if (plaza != null)		search2 += '&$PLAZA=' + (plaza ? "1" : "0");
+		if (citadel != null)	search2 += '&$CITADEL=' + (citadel ? "1" : "0");
+		if (walls != null)		search2 += '&$WALLS=' + (walls ? "1" : "0");
+		if (innerWall) {
+			search2 += '&$INNER_WALL=1';
+			search2 += '&$CORE=$coreSize';
+		}
+		if (districts != "")	search2 += '&$DISTRICTS=' + StringTools.urlEncode( districts );
+
 		// The next line is not entirely correct, it doesn't take into account hashes
 		var url = search1 != "" ? loc.href.split( search1 ).join( search2 ) : loc.href + search2;
 		Browser.window.history.replaceState( {size: size, seed: seed}, getStateName(), url );

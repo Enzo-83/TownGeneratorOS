@@ -14,12 +14,15 @@ class Patch {
 
 	public var withinWalls	: Bool;
 	public var withinCity	: Bool;
+	// Inside the inner ring, when the city has one.
+	public var withinInnerWall	: Bool;
 
 	public inline function new( vertices:Array<Point> ) {
 		this.shape = new Polygon( vertices );
 
-		withinCity	= false;
-		withinWalls	= false;
+		withinCity		= false;
+		withinWalls		= false;
+		withinInnerWall	= false;
 	}
 
 	public static function fromRegion( r:Region ):Patch
