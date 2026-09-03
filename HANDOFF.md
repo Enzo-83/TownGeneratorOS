@@ -56,6 +56,19 @@ Export and labels are behind undiscoverable keypresses. `ui/` has `Button.hx` an
 Everything else in the version gap is cosmetic. Rivers are not: they are the reason
 riverside settlements can be mapped at all.
 
+> ⛔ **Rivers are the only remaining feature that changes generation, and they must not
+> break existing seeds.**
+>
+> Names and collision rejection touch labels, not layout; a menu touches neither. A river
+> carves through the patch layout, so **if river code draws from `Random` when `river=0`,
+> it shifts the sequence and every previously chosen seed produces a different city** —
+> including landlocked ones that will never have a river.
+>
+> Follow the pattern already in `Model.new`: the plaza, citadel and wall rolls are **always
+> drawn, in the original order**, and only then overridden, so setting one parameter cannot
+> silently relayout the map. Do the same for the river roll, and do any river-specific
+> geometry **after** the patch layout is fixed.
+
 ### Deliberately not doing
 
 - **The 0.8.0 building algorithm.** Buildings are texture at map scale; nobody reads an
