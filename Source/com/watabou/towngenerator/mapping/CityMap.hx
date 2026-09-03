@@ -79,6 +79,123 @@ class CityMap extends Sprite {
 
 		if (model.citadel != null)
 			drawWall( walls.graphics, cast( model.citadel.ward, Castle).wall, true );
+
+		addLabels( model );
+		addScaleBar( model );
+	}
+
+	/**
+		District names, and the settlement's own name above the map. Labels sit
+		above everything else so a street never runs through a word.
+	**/
+	private function addLabels( model:Model ):Void {
+		var labels = new Sprite();
+		labels.mouseEnabled = false;
+		labels.mouseChildren = false;
+		addChild( labels );
+
+		var markers = new Sprite();
+		markers.mouseEnabled = false;
+		addChild( markers );
+		var mg = markers.graphics;
+
+		for (patch in model.patches) {
+			if (!patch.withinCity || patch.ward == null)
+				continue;
+
+			if (patch.landmark != null) {
+				// A named building supersedes its district's name — printing
+				// both in one patch just yields two unreadable labels. The
+				// label sits below the marker at a fixed readable size rather
+				// than being squeezed to fit, since landmark names are long.
+				var centre = patch.shape.center;
+
+				mg.beginFill( palette.dark );
+				mg.drawCircle( centre.x, centre.y, model.cityRadius * 0.011 );
+				mg.endFill();
+
+				labels.addChild( LabelView.freestanding(
+					patch.landmark,
+					new Point( centre.x, centre.y + model.cityRadius * 0.038 ),
+					model.cityRadius * 0.030,
+					palette.dark ) );
+
+			} else if (patch.ward.name != null) {
+				var label = LabelView.forPatch( patch.ward.name, patch.shape, palette.dark );
+				if (label != null)
+					labels.addChild( label );
+			}
+		}
+
+		if (model.cityName != null) {
+			labels.addChild( LabelView.freestanding(
+				model.cityName,
+				new Point( 0, -model.cityRadius * 1.16 ),
+				model.cityRadius * 0.14,
+				palette.dark ) );
+
+			labels.addChild( LabelView.freestanding(
+				'~${thousands( model.population )} people · ${thousands( model.buildingCount )} buildings',
+				new Point( 0, -model.cityRadius * 1.05 ),
+				model.cityRadius * 0.038,
+				palette.dark ) );
+		}
+	}
+
+	public static function thousands( n:Int ):String {
+		var s = Std.string( n );
+		var out = "";
+		var count = 0;
+		var i = s.length - 1;
+		while (i >= 0) {
+			out = s.charAt( i ) + out;
+			if (++count % 3 == 0 && i > 0)
+				out = "," + out;
+			i--;
+		}
+		return out;
+	}
+
+	/**
+		A bar of a round number of metres. Drawn in map units, so it stays
+		truthful at any zoom the scene applies.
+	**/
+	private function addScaleBar( model:Model ):Void {
+		var half = model.cityRadius * Model.METRES_PER_UNIT * 0.6;
+
+		var metres = 50;
+		for (candidate in [50, 100, 250, 500, 1000, 2000, 5000])
+			if (candidate <= half)
+				metres = candidate;
+
+		var length = metres / Model.METRES_PER_UNIT;
+		var x = -model.cityRadius;
+		var y = model.cityRadius * 1.1;
+		var tick = model.cityRadius * 0.02;
+
+		var bar = new Sprite();
+		bar.mouseEnabled = false;
+		var g = bar.graphics;
+
+		g.lineStyle( Brush.NORMAL_STROKE * 1.5, palette.dark );
+		g.moveTo( x, y );
+		g.lineTo( x + length, y );
+		g.moveTo( x, y - tick );
+		g.lineTo( x, y + tick );
+		g.moveTo( x + length, y - tick );
+		g.lineTo( x + length, y + tick );
+		// Midpoint, so the bar can be read at half its length too.
+		g.moveTo( x + length / 2, y );
+		g.lineTo( x + length / 2, y + tick );
+
+		addChild( bar );
+
+		var caption = LabelView.freestanding(
+			metres + " m",
+			new Point( x + length / 2, y + tick * 3.4 ),
+			model.cityRadius * 0.045,
+			palette.dark );
+		addChild( caption );
 	}
 
 	private function drawRoad( g:Graphics, road:Street ):Void {

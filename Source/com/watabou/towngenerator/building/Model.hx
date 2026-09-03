@@ -23,6 +23,12 @@ class Model {
 
 	public static var instance	: Model;
 
+	// How many metres one map unit represents. The generator is unitless;
+	// this is the constant that lets it draw a scale bar and report a
+	// plausible population. Calibrated against street and building widths:
+	// MAIN_STREET is 2 units, and a main street is about eight metres.
+	public static inline var METRES_PER_UNIT = 4.0;
+
 	// Small Town	6
 	// Large Town	10
 	// Small City	15
@@ -75,6 +81,19 @@ class Model {
 
 	public var cityRadius	: Float;
 
+	public var cityName		: String;
+
+	// Filled in by buildGeometry: every building drawn inside the city.
+	public var buildingCount	: Int;
+
+	// Six to a building. Measured against the released generator's own
+	// readout across four sizes, which lands between 6.0 and 6.2 throughout.
+	public var population(get,never)	: Int;
+	inline function get_population():Int
+		return Math.round( buildingCount * 6 );
+
+	private var landmarks	: Array<String>;
+
 	// List of all entrances of a city including castle gates
 	public var gates	: Array<Point>;
 
@@ -106,6 +125,7 @@ class Model {
 		innerWallNeeded	= opts.innerWall;
 		coreSize		= opts.coreSize;
 		placements		= opts.placements != null ? opts.placements : [];
+		landmarks		= opts.landmarks != null ? opts.landmarks : [];
 
 		do try {
 			build();
@@ -125,7 +145,50 @@ class Model {
 		buildWalls();
 		buildStreets();
 		createWards();
+		nameWards();
+		assignLandmarks();
 		buildGeometry();
+	}
+
+	/**
+		Sites the caller's points of interest, one to a district. Placement is
+		random — this reproduces the released generator's behaviour, where a
+		landmark list is scattered rather than positioned. Reroll the seed
+		until it lands somewhere you can live with.
+	**/
+	private function assignLandmarks():Void {
+		if (landmarks.length == 0)
+			return;
+
+		var available = patches.filter( function( p:Patch )
+			return p.withinCity && p.ward != null && p.ward.name != null );
+
+		for (name in landmarks) {
+			if (available.length == 0)
+				break;
+			var patch = available.random();
+			patch.landmark = name;
+			available.remove( patch );
+		}
+	}
+
+	/**
+		Gives every district inside the city a proper name. Patches outside it
+		are left unnamed — farmland does not get called anything.
+	**/
+	private function nameWards():Void {
+		cityName = options != null && options.name != null && options.name != "" ?
+			options.name :
+			Toponymy.settlement();
+
+		for (patch in patches)
+			if (patch.withinCity && patch.ward != null) {
+				var type = Type.getClassName( Type.getClass( patch.ward ) ).split( "." ).pop();
+				// Districts on the edge take a compass prefix more often,
+				// which is how the outskirts of a real city get named.
+				var outer = wall != null ? !patch.withinWalls : !patch.withinInnerWall;
+				patch.ward.name = Toponymy.district( type, outer );
+			}
 	}
 
 	private function buildPatches():Void {
@@ -568,9 +631,16 @@ class Model {
 		}
 	}
 
-	private function buildGeometry()
-		for (patch in patches)
+	private function buildGeometry():Void {
+		buildingCount = 0;
+
+		for (patch in patches) {
 			patch.ward.createGeometry();
+
+			if (patch.withinCity && patch.ward.geometry != null)
+				buildingCount += patch.ward.geometry.length;
+		}
+	}
 
 
 	public function getNeighbour( patch:Patch, v:Point ):Patch {

@@ -24,6 +24,10 @@ class Ward {
 
 	public var geometry	: Array<Polygon>;
 
+	// The district's proper name, e.g. "Silver Rock". Null on anything
+	// outside the city, which is not labelled.
+	public var name		: String;
+
 	public function new( model:Model, patch:Patch ) {
 		this.model = model;
 		this.patch = patch;

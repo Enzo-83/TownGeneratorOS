@@ -16,6 +16,8 @@ class Patch {
 	public var withinCity	: Bool;
 	// Inside the inner ring, when the city has one.
 	public var withinInnerWall	: Bool;
+	// A named point of interest sited here, if any.
+	public var landmark		: String;
 
 	public inline function new( vertices:Array<Point> ) {
 		this.shape = new Polygon( vertices );

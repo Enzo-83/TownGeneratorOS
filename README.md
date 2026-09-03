@@ -63,6 +63,51 @@ An impossible spec would otherwise rebuild the city forever. Every compromise is
 in `Model.placementWarnings`, so a caller can tell *the district is where I asked* from
 *the district is somewhere*.
 
+### Names and labels
+
+**The upstream source draws no text at all** — no district names, no settlement name, no
+scale bar. Labelled districts arrived in 0.7.1, which postdates this code, so a fork of it
+produces maps with nothing written on them.
+
+This fork adds:
+
+- **District names**, generated compositionally rather than by Markov chain. The names
+  being imitated ("Silver Rock", "North Slums", "Rose Gate") are modifier + head noun, and
+  a head chosen from the ward's own type is what makes a market read as a market. A
+  character-level chain on a small corpus produces mush and cannot be steered that way.
+- **Label fitting** — each name is tried at twelve angles and placed at the largest legible
+  size that fits its patch, or dropped if none does. Text is rasterised large and scaled
+  *down*, since the map is drawn in units where a whole town is a few hundred across.
+- **The settlement's name** above the map, and a **population / building count** beneath it.
+- **A scale bar**, in map units, so it stays truthful at any zoom.
+
+Population is `buildings × 6`, measured against the released generator's own readout across
+four sizes, where it lands between 6.0 and 6.2 throughout. `Model.METRES_PER_UNIT` is 4,
+calibrated from `MAIN_STREET` being 2 units and a main street being about eight metres —
+which puts a 2,100-person town at roughly 18 hectares, about right for the period.
+
+### Landmarks
+
+A comma-separated list of points of interest, scattered one to a district and drawn as a
+marker with its name beneath. A landmark supersedes its district's own name, since printing
+both in one patch yields two unreadable labels.
+
+**Placement is random**, which reproduces the released generator's behaviour — a landmark
+list is scattered, not positioned. Reroll the seed until it lands somewhere you can live with.
+
+### Export
+
+| Key | Writes |
+|---|---|
+| `S` | SVG |
+| `P` | PNG, 2048×2048 |
+
+**SVG is written from the model, not captured from the screen**, so the output is real
+vector geometry in named groups (`roads`, `buildings`, `walls`, `labels`) that you can pull
+apart in an editor. That is the point of exporting rather than screenshotting.
+
+The released generator puts these behind a menu. A menu is a bigger job than the exporters.
+
 ---
 
 ## URL parameters
@@ -79,6 +124,8 @@ Upstream's build reads only `size` and `seed`. This fork adds the rest:
 | `innerwall` | `0` / `1` | `0` |
 | `core` | 2–30 — patches inside the inner ring | 5 |
 | `districts` | `ward:zone,ward:zone,…` | none |
+| `name` | the settlement's name | generated |
+| `landmarks` | comma-separated names | none |
 
 Ward names for `districts`: `craftsmen`, `merchant`, `cathedral`, `administration`,
 `slum`, `patriciate`, `market`, `military`, `park`, `gate`, `farm`.

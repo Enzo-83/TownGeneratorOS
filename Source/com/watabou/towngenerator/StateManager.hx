@@ -12,15 +12,19 @@ class StateManager {
 
 	private static inline var SIZE			= "size";
 	private static inline var SEED			= "seed";
+	private static inline var NAME			= "name";
 	private static inline var PLAZA			= "plaza";
 	private static inline var CITADEL		= "citadel";
 	private static inline var WALLS			= "walls";
 	private static inline var INNER_WALL	= "innerwall";
 	private static inline var CORE			= "core";
 	private static inline var DISTRICTS		= "districts";
+	private static inline var LANDMARKS		= "landmarks";
 
 	public static var size	: Int = 15;
 	public static var seed	: Int = -1;
+	// Empty means "let the generator invent one".
+	public static var name	: String = "";
 
 	// Null means "let the generator roll for it".
 	public static var plaza		: Null<Bool> = null;
@@ -31,6 +35,8 @@ class StateManager {
 	public static var coreSize	: Int = 5;
 	// Kept as written so it can be put back in the URL verbatim.
 	public static var districts	: String = "";
+	// Comma-separated points of interest.
+	public static var landmarks	: String = "";
 
 	public static function pullParams() {
 		#if html5
@@ -54,6 +60,12 @@ class StateManager {
 
 			var districts1 = params.get( DISTRICTS );
 			if (districts1 != null) districts = districts1;
+
+			var name1 = params.get( NAME );
+			if (name1 != null) name = name1;
+
+			var landmarks1 = params.get( LANDMARKS );
+			if (landmarks1 != null) landmarks = landmarks1;
 		}
 		#end
 	}
@@ -72,12 +84,14 @@ class StateManager {
 
 		options.size		= size;
 		options.seed		= seed;
+		options.name		= name != "" ? name : null;
 		options.plaza		= plaza;
 		options.citadel		= citadel;
 		options.walls		= walls;
 		options.innerWall	= innerWall;
 		options.coreSize	= coreSize;
 		options.placements	= CityOptions.parsePlacements( districts );
+		options.landmarks	= CityOptions.parseLandmarks( landmarks );
 
 		return options;
 	}
@@ -101,6 +115,8 @@ class StateManager {
 			search2 += '&$CORE=$coreSize';
 		}
 		if (districts != "")	search2 += '&$DISTRICTS=' + StringTools.urlEncode( districts );
+		if (name != "")			search2 += '&$NAME=' + StringTools.urlEncode( name );
+		if (landmarks != "")	search2 += '&$LANDMARKS=' + StringTools.urlEncode( landmarks );
 
 		// The next line is not entirely correct, it doesn't take into account hashes
 		var url = search1 != "" ? loc.href.split( search1 ).join( search2 ) : loc.href + search2;

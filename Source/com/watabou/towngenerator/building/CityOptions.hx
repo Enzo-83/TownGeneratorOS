@@ -34,6 +34,8 @@ class CityOptions {
 
 	public var size	: Int = 15;
 	public var seed	: Int = -1;
+	// Left null, the generator invents one.
+	public var name	: String = null;
 
 	public var plaza	: Null<Bool> = null;
 	public var citadel	: Null<Bool> = null;
@@ -47,7 +49,28 @@ class CityOptions {
 
 	public var placements	: Array<WardPlacement> = [];
 
+	// Named points of interest, distributed over the city's districts.
+	public var landmarks	: Array<String> = [];
+
 	public function new() {}
+
+	/**
+		Splits a comma-separated landmark list. Names may contain spaces;
+		they may not contain commas.
+	**/
+	public static function parseLandmarks( spec:String ):Array<String> {
+		var result:Array<String> = [];
+		if (spec == null)
+			return result;
+
+		for (entry in spec.split( "," )) {
+			var name = StringTools.trim( entry );
+			if (name != "")
+				result.push( name );
+		}
+
+		return result;
+	}
 
 	// Concrete wards only. CommonWard is deliberately absent: it is the base
 	// class, its constructor takes minSq/gridChaos/sizeChaos as well, and
