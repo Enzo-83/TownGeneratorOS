@@ -18,6 +18,10 @@ class Patch {
 	public var withinInnerWall	: Bool;
 	// A named point of interest sited here, if any.
 	public var landmark		: String;
+	// True when the caller named this district in `districts=` rather than
+	// leaving it to `Toponymy`. Such a name is never overwritten by a landmark
+	// and its label is never dropped for want of room.
+	public var nameFromCaller	: Bool;
 
 	public inline function new( vertices:Array<Point> ) {
 		this.shape = new Polygon( vertices );
@@ -25,6 +29,7 @@ class Patch {
 		withinCity		= false;
 		withinWalls		= false;
 		withinInnerWall	= false;
+		nameFromCaller	= false;
 	}
 
 	public static function fromRegion( r:Region ):Patch

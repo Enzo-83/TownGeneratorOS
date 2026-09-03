@@ -79,12 +79,6 @@ class Model {
 	// tell "the district is where I said" from "the district is somewhere".
 	public var placementWarnings	: Array<String>;
 
-	// Patches whose district name came from the caller rather than Toponymy.
-	// A landmark supersedes the label of the district it lands on, so it is
-	// kept off these: a hand-written name is not something to overwrite by
-	// a random scatter.
-	private var namedPatches		: Array<Patch>;
-
 	public var cityRadius	: Float;
 
 	public var cityName		: String;
@@ -166,9 +160,12 @@ class Model {
 		if (landmarks.length == 0)
 			return;
 
+		// A landmark supersedes the label of the district it lands on, so it
+		// is kept off a district the caller named: a hand-written name is not
+		// something to overwrite by a random scatter.
 		var available = patches.filter( function( p:Patch )
 			return p.withinCity && p.ward != null && p.ward.name != null &&
-				!namedPatches.contains( p ) );
+				!p.nameFromCaller );
 
 		for (name in landmarks) {
 			if (available.length == 0)
@@ -606,7 +603,6 @@ class Model {
 	**/
 	private function placeWards( unassigned:Array<Patch> ):Void {
 		placementWarnings = [];
-		namedPatches = [];
 
 		for (placement in placements) {
 			var type = Type.getClassName( placement.ward ).split( "." ).pop();
@@ -639,8 +635,7 @@ class Model {
 			// The name follows the ward wherever it landed, including into a
 			// zone the layout could not honour. `nameWards` leaves it alone.
 			best.ward.name = placement.name;
-			if (placement.name != null)
-				namedPatches.push( best );
+			best.nameFromCaller = placement.name != null;
 			unassigned.remove( best );
 		}
 	}

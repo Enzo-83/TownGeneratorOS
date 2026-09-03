@@ -114,69 +114,59 @@ class MapExporter {
 		}
 	}
 
+	/**
+		Every label the screen renderer draws, from the same plan, so the two
+		cannot disagree about which ones a map has. A plan places a label by
+		its centre; SVG anchors text at its baseline, hence the shift.
+	**/
 	static function addLabels( model:Model, colour:String ):String {
+		var plan = LabelPlan.build( model );
+
+		var paper = hex( CityMap.palette.paper );
+
 		var b = new StringBuf();
 		b.add( '<g id="labels" fill="$colour" text-anchor="middle" font-family="Georgia, serif">\n' );
 
-		for (patch in model.patches) {
-			if (!patch.withinCity || patch.ward == null)
-				continue;
-
-			if (patch.landmark != null) {
-				var centre = patch.shape.center;
-				b.add( '<circle cx="${f(centre.x)}" cy="${f(centre.y)}" r="${f(model.cityRadius * 0.011)}" fill="$colour"/>\n' );
-				b.add( text( patch.landmark, centre.x, centre.y + model.cityRadius * 0.038 + model.cityRadius * 0.011, model.cityRadius * 0.030, 0 ) );
-
-			} else if (patch.ward.name != null) {
-				var placement = LabelView.fit( patch.ward.name, patch.shape );
-				if (placement != null)
-					b.add( text( patch.ward.name, placement.at.x, placement.at.y + placement.size * 0.34,
-						placement.size, LabelView.degrees( placement.angle ) ) );
-			}
-		}
-
-		if (model.cityName != null) {
-			b.add( text( model.cityName, 0, -model.cityRadius * 1.16, model.cityRadius * 0.14, 0 ) );
-			b.add( text( '~${CityMap.thousands( model.population )} people · ${CityMap.thousands( model.buildingCount )} buildings',
-				0, -model.cityRadius * 1.05, model.cityRadius * 0.038, 0 ) );
-		}
-
 		b.add( addScaleBar( model, colour ) );
+
+		for (marker in plan.markers)
+			b.add( '<circle cx="${f(marker.at.x)}" cy="${f(marker.at.y)}" r="${f(marker.r)}" fill="$colour"/>\n' );
+
+		// The halo the screen draws as eight offset copies is a stroke under
+		// the fill here. `paint-order` keeps it to one element per label, so
+		// the group is still something you can pull apart in an editor.
+		for (label in plan.labels)
+			b.add( text( label.text, label.at.x, label.at.y + label.size * LabelView.BASELINE,
+				label.size, LabelView.degrees( label.angle ),
+				'stroke="$paper" stroke-width="${f(label.size * LabelView.HALO * 2)}" stroke-linejoin="round" paint-order="stroke"' ) );
+
 		b.add( '</g>\n' );
 		return b.toString();
 	}
 
+	// The bar's rules only. Its caption is a label like any other, and comes
+	// from the plan with the rest of them.
 	static function addScaleBar( model:Model, colour:String ):String {
-		var half = model.cityRadius * Model.METRES_PER_UNIT * 0.6;
-		var metres = 50;
-		for (candidate in [50, 100, 250, 500, 1000, 2000, 5000])
-			if (candidate <= half)
-				metres = candidate;
-
-		var length = metres / Model.METRES_PER_UNIT;
-		var x = -model.cityRadius;
-		var y = model.cityRadius * 1.1;
-		var tick = model.cityRadius * 0.02;
+		var s = LabelPlan.scaleBar( model );
 		var w = f( Brush.NORMAL_STROKE * 1.5 );
 
 		var b = new StringBuf();
 		b.add( '<g stroke="$colour" stroke-width="$w">\n' );
-		b.add( '<line x1="${f(x)}" y1="${f(y)}" x2="${f(x + length)}" y2="${f(y)}"/>\n' );
-		b.add( '<line x1="${f(x)}" y1="${f(y - tick)}" x2="${f(x)}" y2="${f(y + tick)}"/>\n' );
-		b.add( '<line x1="${f(x + length)}" y1="${f(y - tick)}" x2="${f(x + length)}" y2="${f(y + tick)}"/>\n' );
-		b.add( '<line x1="${f(x + length / 2)}" y1="${f(y)}" x2="${f(x + length / 2)}" y2="${f(y + tick)}"/>\n' );
+		b.add( '<line x1="${f(s.x)}" y1="${f(s.y)}" x2="${f(s.x + s.length)}" y2="${f(s.y)}"/>\n' );
+		b.add( '<line x1="${f(s.x)}" y1="${f(s.y - s.tick)}" x2="${f(s.x)}" y2="${f(s.y + s.tick)}"/>\n' );
+		b.add( '<line x1="${f(s.x + s.length)}" y1="${f(s.y - s.tick)}" x2="${f(s.x + s.length)}" y2="${f(s.y + s.tick)}"/>\n' );
+		b.add( '<line x1="${f(s.x + s.length / 2)}" y1="${f(s.y)}" x2="${f(s.x + s.length / 2)}" y2="${f(s.y + s.tick)}"/>\n' );
 		b.add( '</g>\n' );
-		b.add( text( metres + " m", x + length / 2, y + tick * 4.4, model.cityRadius * 0.045, 0 ) );
 		return b.toString();
 	}
 
 	// ------------------------------------------------------------ helpers
 
-	static function text( s:String, x:Float, y:Float, size:Float, rotation:Float ):String {
+	static function text( s:String, x:Float, y:Float, size:Float, rotation:Float, extra = "" ):String {
 		var escaped = StringTools.htmlEscape( s );
 		return rotation == 0 ?
-			'<text x="${f(x)}" y="${f(y)}" font-size="${f(size)}">$escaped</text>\n' :
-			'<text transform="translate(${f(x)},${f(y)}) rotate(${f(rotation)})" font-size="${f(size)}">$escaped</text>\n';
+			'<text x="${f(x)}" y="${f(y)}" font-size="${f(size)}" $extra>$escaped</text>\n' :
+			'<text transform="translate(${f(x)},${f(y)}) rotate(${f(rotation)})" font-size="${f(size)}" $extra>$escaped</text>\n';
 	}
 
 	static function shape( poly:Polygon, fill:String, stroke:String, width:Float ):String {

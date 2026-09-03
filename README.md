@@ -96,6 +96,19 @@ This fork adds:
 - **Label fitting** — each name is tried at twelve angles and placed at the largest legible
   size that fits its patch, or dropped if none does. Text is rasterised large and scaled
   *down*, since the map is drawn in units where a whole town is a few hundred across.
+- **Collision rejection** — a label is also tested against every label already placed, and
+  falls back through angles and sizes until it clears them or gives up. The released
+  generator solved this properly in 0.11.1 with straight-skeleton placement; this is most
+  of the benefit for a fraction of the work. **The order is the priority**: the settlement
+  title, the scale caption, landmarks and hand-named districts are placed first, and only
+  a generated district name is ever dropped.
+- **A halo** behind every label, in the paper colour. The map is drawn almost entirely in
+  one ink, so a bare glyph over a block of houses has to be picked out of the hatching
+  before it can be read. On screen the halo is eight offset copies of the text; in SVG it
+  is a stroke under the fill, so it stays one element per label.
+- **A legibility floor** under every label, not just the district names. Landmark names,
+  the population line and the scale caption are sized as a share of the city's radius, and
+  on a small town that share came out at half the size at which anything is readable.
 - **The settlement's name** above the map, and a **population / building count** beneath it.
 - **A scale bar**, in map units, so it stays truthful at any zoom.
 
@@ -126,6 +139,10 @@ to overwrite by a scatter. Generated names are fair game.
 **SVG is written from the model, not captured from the screen**, so the output is real
 vector geometry in named groups (`roads`, `buildings`, `walls`, `labels`) that you can pull
 apart in an editor. That is the point of exporting rather than screenshotting.
+
+Both the screen and the SVG take their labels from the same `LabelPlan`, so the two cannot
+disagree about which labels a map has — which they otherwise would, since collision
+rejection depends on the order labels are placed in.
 
 The released generator puts these behind a menu. A menu is a bigger job than the exporters.
 

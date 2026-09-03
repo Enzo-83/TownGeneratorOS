@@ -13,6 +13,7 @@ Working notes for picking this fork up cold. The [README](README.md) says what t
 - **Placed districts** — `core` / `between` / `city` / `plaza`
 - **District and settlement names**, fitted labels, landmarks, population, scale bar
 - **Custom district names** — `districts=` takes `ward:zone:Name`
+- **Label collision rejection**, halos, and one `LabelPlan` behind both renderers
 - **SVG and PNG export** on the `S` and `P` keys
 
 ---
@@ -37,28 +38,50 @@ hashes identically with and without the names on `?size=24&seed=149&…`.
 Landmarks are kept off hand-named districts (`Model.namedPatches`), since a landmark
 supersedes the district label it lands on.
 
-> ⛔ **A long custom name is dropped, not shrunk.** `LabelView.fit` returns null below
-> `MIN_FIT`, so "The Velvet Road" vanished from `?size=24&seed=149&…` while "Velvet"
-> printed. A name the user typed by hand is the one label that must never silently
-> disappear — fixed as part of 2 below.
+> ✅ **A long custom name used to be dropped rather than shrunk.** `LabelView.fit` returns
+> null below `MIN_FIT`, so "The Velvet Road" vanished from `?size=24&seed=149&…` while
+> "Velvet" printed. `fitInsistent` now prints it at `MIN_FIT` anyway, overflowing its
+> patch, and picks the least-overlapping angle when nothing is clear — see 2.
 
-### 2. Label collision rejection — cheap, and now worth it
+### 2. ✅ Label collision rejection — done, plus the readability work it exposed
 
-`LabelView.fit` sizes each label to its own patch and knows nothing about its neighbours,
-so labels in small adjacent patches can collide. The released generator solved this
-properly in 0.11.1 with straight-skeleton placement; **that is not what to build.** Keep a
-list of placed label bounding boxes, test each new one against it, and drop or shrink on
-overlap. Most of the benefit, a fraction of the work.
+`LabelPlan` decides every label on a map and in what order; `CityMap` and `MapExporter`
+both consume it, so the screen and the SVG cannot disagree about which labels a map has.
+`LabelView.fit` takes the boxes already spoken for and falls back through twelve angles and
+four sizes until it clears them.
 
-Reserve in priority order — title, population line, scale caption, landmarks, **hand-named
-districts**, then generated names — and only let the last group be dropped. A hand-named
-district should also be clamped to `MIN_FIT` rather than dropped, per the note above.
+**The order is the priority**, since whatever is placed first cannot be pushed aside: title,
+population line, scale caption, landmarks, hand-named districts, generated names. Only the
+last group is ever dropped, into `LabelPlan.dropped`.
 
-⚠️ **Whatever you build has to run identically in `CityMap.addLabels` and
-`MapExporter.addLabels`**, which are two parallel loops over `model.patches` today.
-Collision rejection depends on placement order, so parallel code will drift into
-disagreement between the screen and the SVG. Compute the placements once and have both
-renderers consume them.
+Three things this turned up that are worth not rediscovering:
+
+- ⛔ **`GLYPH_RATIO` is the wrong number for a collision box, and using it made the
+  rejection silently not reject.** 0.46 is an *average* advance, tuned so a label looks
+  right inside its patch. Measured against Georgia the mean is 0.50 and "Hound Works" is
+  0.57, so boxes built from 0.46 sat a tenth of a label's width inside each other and the
+  test passed them. `BOX_RATIO`/`BOX_HEIGHT` are separate and deliberately worst-case. A
+  fitting ratio wants the average; a box wants the widest name on the map.
+- **`MIN_FIT` is now a floor under *every* label**, applied in `LabelPlan.reserve`, not
+  just the district names that are sized against a patch. Landmark names, the population
+  line and the scale caption are all a share of `cityRadius`, and at size 15 that share was
+  about half the size at which anything is readable — the names the caller cared about most
+  were the least legible text on the map.
+- **A landmark's name is measured out from its dot**, not offset by a share of the radius.
+  Once the size had a floor under it, a fixed share put the name straight through its own
+  marker on a small town.
+
+**Labels are haloed** in the paper colour — eight offset copies on screen, a stroke under
+the fill via `paint-order` in SVG. The map is drawn almost entirely in one ink, and a bare
+glyph over a block of houses has to be picked out of the hatching before it can be read.
+⚠️ The halo is why the AABB test is worth keeping conservative: a label that *nearly*
+collides now prints a ring through its neighbour.
+
+> **Testing this without clicking:** export the SVG by the recipe further down, inject only
+> its `#labels` group into a 2048×2048 host div, and compare `getBoundingClientRect()`
+> pairwise. That is the browser's own glyph metrics rather than our estimate of them, so it
+> catches exactly the `GLYPH_RATIO` class of bug. `?size=24&seed=149&…` went from ten
+> overlapping pairs to none.
 
 ### 3. A menu — moderate
 
