@@ -19,6 +19,7 @@ class StateManager {
 	private static inline var WALLS			= "walls";
 	private static inline var INNER_WALL	= "innerwall";
 	private static inline var CORE			= "core";
+	private static inline var RIVER			= "river";
 	private static inline var DISTRICTS		= "districts";
 	private static inline var LANDMARKS		= "landmarks";
 
@@ -34,6 +35,7 @@ class StateManager {
 
 	public static var innerWall	: Bool = false;
 	public static var coreSize	: Int = 5;
+	public static var river		: Bool = false;
 	// Kept as written so it can be put back in the URL verbatim.
 	public static var districts	: String = "";
 	// Comma-separated points of interest.
@@ -58,6 +60,9 @@ class StateManager {
 
 			var core1 = Std.parseInt( params.get( CORE ) );
 			if (core1 != null) coreSize = (core1 >= 2 ? (core1 <= 30 ? core1 : 30) : 2);
+
+			var river1 = boolParam( params, RIVER );
+			if (river1 != null) river = river1;
 
 			var districts1 = params.get( DISTRICTS );
 			if (districts1 != null) districts = districts1;
@@ -91,6 +96,7 @@ class StateManager {
 		options.walls		= walls;
 		options.innerWall	= innerWall;
 		options.coreSize	= coreSize;
+		options.river		= river;
 		options.placements	= CityOptions.parsePlacements( districts );
 		options.landmarks	= CityOptions.parseLandmarks( landmarks );
 
@@ -131,6 +137,7 @@ class StateManager {
 			search2 += '&$INNER_WALL=1';
 			search2 += '&$CORE=$coreSize';
 		}
+		if (river)				search2 += '&$RIVER=1';
 		if (districts != "")	search2 += '&$DISTRICTS=' + StringTools.urlEncode( districts );
 		if (name != "")			search2 += '&$NAME=' + StringTools.urlEncode( name );
 		if (landmarks != "")	search2 += '&$LANDMARKS=' + StringTools.urlEncode( landmarks );

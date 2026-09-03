@@ -60,8 +60,8 @@ somewhere the generator considers sensible rather than somewhere arbitrary.
 
 **A zone that cannot be satisfied falls back to anywhere in the city rather than throwing.**
 An impossible spec would otherwise rebuild the city forever. Every compromise is recorded
-in `Model.placementWarnings`, so a caller can tell *the district is where I asked* from
-*the district is somewhere*.
+in `Model.placementWarnings` — which also carries a river that could not be routed — so a
+caller can tell *the district is where I asked* from *the district is somewhere*.
 
 A placement may also carry **the district's name**, as a third field:
 
@@ -80,6 +80,41 @@ spaces and colons, but not a comma, which separates one placement from the next.
 **Naming a district does not move anything.** The generated name is still rolled and thrown
 away, because ward geometry is built afterwards from the same random sequence — skipping
 the roll would shift every building in the city.
+
+### A river
+
+Opt-in, with `river=1` or the menu toggle. Riverside settlements are the reason to have
+one at all, and until now they could not be mapped.
+
+> ⛔ **A river does not change the city it runs through.**
+>
+> Everything the generator makes — the patches, the walls, the streets, the wards, every
+> building — comes out of one static `Random` in order. A single draw from it for the river
+> would shift all of them, and every seed already chosen would produce a different city,
+> including the landlocked ones that will never have a river. So the river draws from a
+> generator of its own, seeded from the city's seed, and it runs **after** the geometry is
+> finished. Toggling it leaves exactly the same city underneath.
+>
+> Verified rather than asserted: on the same seed with and without it, the `roads` and
+> `walls` groups of the exported SVG are byte-identical, and every building in the wet map
+> is also in the dry one. The river only ever takes buildings away.
+
+The cost of that is that the wards do not know about the water — nobody sites a district
+with reference to a river that does not exist yet. What happens instead is that the
+buildings the water covers are cleared afterwards, and the population falls with them,
+since it is counted from the buildings left standing.
+
+The course follows patch boundaries, for the same reason the inner ring does: an edge is a
+line the generator has already agreed nothing is built on. It pays a toll to run along a
+street or across the plaza, so it prefers to cross a road rather than flow down it, and
+each crossing gets a **bridge**. ⚠️ If nothing crosses, one is placed where the water runs
+nearest the middle of the town: the street network was built before the river existed, so
+on a small town with two streets whether anything crosses is luck — and a settlement
+straddling a river has a crossing.
+
+**There is deliberately no river roll.** A roll would have to come out of the city's own
+sequence to be reproducible from the seed, and drawing from that sequence is the one thing
+the river must not do.
 
 ### Names and labels
 
@@ -150,8 +185,8 @@ Both are also in the menu, which is where anyone who has not read this will find
 ### The menu
 
 Down the right-hand edge: the four city sizes, **New City** for another one the same size,
-toggles for **walls**, the inner **ring**, the **citadel** and the **plaza**, and the two
-exports. Each has a tooltip.
+toggles for **walls**, the inner **ring**, the **citadel**, the **plaza** and the **river**,
+and the two exports. Each has a tooltip.
 
 A toggle reads its state from the finished model rather than from the parameters, so it
 shows what the map on screen actually has. Those differ whenever a parameter was left to
@@ -178,6 +213,7 @@ Upstream's build reads only `size` and `seed`. This fork adds the rest:
 | `walls` | `0` / `1` | rolled |
 | `innerwall` | `0` / `1` | `0` |
 | `core` | 2–30 — patches inside the inner ring | 5 |
+| `river` | `0` / `1` | `0` |
 | `districts` | `ward:zone:Name,…` — zone and name both optional | none |
 | `name` | the settlement's name | generated |
 | `landmarks` | comma-separated names | none |
@@ -198,7 +234,9 @@ subdivides until the stack gives out. `Castle` belongs to the citadel and raises
 
 **Seeds still reproduce upstream's cities.** The three rolls for plaza, citadel and walls
 are always drawn, in the original order, even when you override them — otherwise setting
-one parameter would silently change the whole layout.
+one parameter would silently change the whole layout. Nothing this fork adds draws from
+that sequence at all; `river=1` is the closest thing to an exception, and it has a
+generator of its own precisely so that it is not one.
 
 Programmatically, set `Model.options` to a `CityOptions` before constructing a `Model`.
 Left null, the generator behaves exactly as it did upstream.

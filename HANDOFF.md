@@ -15,14 +15,17 @@ Working notes for picking this fork up cold. The [README](README.md) says what t
 - **Custom district names** — `districts=` takes `ward:zone:Name`
 - **Label collision rejection**, halos, and one `LabelPlan` behind both renderers
 - **SVG and PNG export** on the `S` and `P` keys, and in the menu
-- **A menu** — sizes, reroll, walls/ring/citadel/plaza toggles, both exports
+- **A menu** — sizes, reroll, walls/ring/citadel/plaza/river toggles, both exports
+- **A river**, opt-in, that provably does not change the city it runs through
 
 ---
 
-## What to do next, in order
+## What was done next, in order
 
-The order matters more than the list, and it is **not** the order you would get from
-working down the version gap to the released 0.11.4.
+⚠️ **All four are now done.** They are kept here with what each one turned out to cost,
+because the traps are the part worth reading, and because the order they were done in is
+still the argument for how to pick the next thing: **not** by working down the version gap
+to the released 0.11.4, but by what a GM with no vector editor cannot work around.
 
 ### 1. ✅ Custom district names — done
 
@@ -116,25 +119,54 @@ Two things this turned up:
 - **`Tooltip` clamps itself to the window.** It was `mouseX + 4`, and the menu is against
   the right-hand edge — so every hint the menu raised started off the side of the screen.
 
-### 4. Rivers — large, and the only large thing worth doing
+### 4. ✅ Rivers — done, and they do not change the city
 
-Everything else in the version gap is cosmetic. Rivers are not: they are the reason
-riverside settlements can be mapped at all.
+> ⛔ **The constraint was that a river must not break existing seeds, and it is met by
+> not drawing from `Random` at all** — not by drawing carefully.
+>
+> The pattern this handoff suggested was the plaza/citadel/wall one: always draw the roll,
+> then override it. That keeps `river=0` and `river=1` agreeing with each other, but a
+> fourth roll still shifts the sequence against every map made before it existed, and it
+> would have cost the README's "seeds still reproduce upstream's cities". So `River` takes
+> an `Rng` of its own — the same generator with its own state, seeded from the city's seed
+> so it stays reproducible — and runs **after** `buildGeometry`, on a layout that is
+> already finished.
+>
+> The consequence is that there is **no river roll**, and there cannot be one: a roll has
+> to come out of the city's own sequence to be reproducible from the seed. `river=1` is
+> opt-in, which is what a GM mapping a named settlement wants anyway.
 
-> ⛔ **Rivers are the only remaining feature that changes generation, and they must not
-> break existing seeds.**
->
-> Names and collision rejection touch labels, not layout; a menu touches neither. A river
-> carves through the patch layout, so **if river code draws from `Random` when `river=0`,
-> it shifts the sequence and every previously chosen seed produces a different city** —
-> including landlocked ones that will never have a river.
->
-> Follow the pattern already in `Model.new`: the plaza, citadel and wall rolls are **always
-> drawn, in the original order**, and only then overridden, so setting one parameter cannot
-> silently relayout the map. Do the same for the river roll, and do any river-specific
-> geometry **after** the patch layout is fixed.
+Measured, not asserted. On `?size=24&seed=149&walls=1` with and without it, the `roads` and
+`walls` groups of the exported SVG hash identically, and **every building in the wet map is
+also in the dry one** — 785 of the dry map's 857, so the river only ever takes buildings
+away. Compare polygon `points` strings as a set; it is a stronger check than a hash,
+because it tells you a difference is a *subset* rather than merely a difference.
+
+What it costs: the wards do not know about the water, because nobody can site a district
+against a river that does not exist yet. The buildings under it are cleared afterwards
+instead, and the population falls with them — `Model.recountBuildings` exists for that.
+
+Things worth knowing if you touch it:
+
+- **The course follows patch boundaries**, like the inner ring, because an edge is a line
+  the generator has already agreed nothing is built on. It pays a toll to run along a
+  street or across the plaza, so it crosses roads rather than flowing down them.
+- ⚠️ **Short segments are dropped before smoothing.** A patch boundary can turn most of a
+  right angle between two vertices a few units apart, and offsetting a corner that sharp
+  folds the far bank back over itself — which draws as a notch bitten out of the river.
+- ⚠️ **A bridge is forced where none was found.** The street network is built before the
+  river exists, so whether a street crosses the water is luck, and on a small town with two
+  streets it is usually bad luck. Without the fallback, `?size=6&seed=2024&river=1` was a
+  walled town cut in half with no way across.
+- **Buildings are cleared by any corner in the water**, not by their centre. Centre-only
+  left blocks sliced by the bank standing in the current.
+- **`LabelPlan` reserves the water** before it places anything, so no name is printed
+  mid-current. Hand-named districts still override that, because `fitInsistent` does.
 
 ### Deliberately not doing
+
+All four items above are done, so this is what remains of the version gap to the released
+0.11.4 — and it is still the part not worth building.
 
 - **The 0.8.0 building algorithm.** Buildings are texture at map scale; nobody reads an
   individual house. ⚠️ If this is ever revisited, note that **building count feeds the

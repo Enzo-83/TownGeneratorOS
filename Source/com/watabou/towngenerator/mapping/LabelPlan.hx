@@ -4,6 +4,7 @@ import openfl.geom.Point;
 import openfl.geom.Rectangle;
 
 import com.watabou.towngenerator.building.Model;
+import com.watabou.towngenerator.building.River;
 
 import com.watabou.towngenerator.mapping.LabelView.Placement;
 
@@ -113,6 +114,12 @@ class LabelPlan {
 		plan.reserve( bar.metres + " m",
 			new Point( bar.x + bar.length / 2, bar.y + bar.tick * 3.4 ), 0, r * CAPTION );
 
+		// The water is spoken for before any label is. A district whose patch
+		// the river runs through still has a name, and printing it mid-current
+		// is the one placement that reads as a mistake rather than a squeeze.
+		if (model.river != null)
+			plan.reserveWater( model.river );
+
 		// Landmarks next, because a landmark cannot be dropped: it is a place
 		// the caller asked for by name, and the dot is drawn whether the name
 		// fits or not. District labels are what gives way.
@@ -182,6 +189,30 @@ class LabelPlan {
 			y:		model.cityRadius * 1.1,
 			tick:	model.cityRadius * 0.02
 		};
+	}
+
+	/**
+		The river's course as a chain of boxes, taken but unlabelled.
+
+		Per segment rather than one box for the whole course: the course is
+		smoothed into many short segments, so a box round each is close to the
+		water's actual shape, where one round the lot would reserve half the
+		map.
+	**/
+	function reserveWater( river:River ):Void {
+		var half = river.width / 2;
+
+		for (i in 0...river.course.length - 1) {
+			var a = river.course[i];
+			var b = river.course[i + 1];
+
+			var left	= Math.min( a.x, b.x ) - half;
+			var top		= Math.min( a.y, b.y ) - half;
+			var right	= Math.max( a.x, b.x ) + half;
+			var bottom	= Math.max( a.y, b.y ) + half;
+
+			taken.push( new Rectangle( left, top, right - left, bottom - top ) );
+		}
 	}
 
 	function free( text:String, at:Point, size:Float ):Bool

@@ -19,6 +19,7 @@ import js.html.URL;
 #end
 
 using com.watabou.utils.ArrayExtender;
+using com.watabou.utils.PointExtender;
 
 /**
 	Getting a map out of the generator.
@@ -47,6 +48,13 @@ class MapExporter {
 		b.add( '<?xml version="1.0" encoding="UTF-8"?>\n' );
 		b.add( '<svg xmlns="http://www.w3.org/2000/svg" viewBox="${f(-r)} ${f(-r)} ${f(span)} ${f(span)}" width="2048" height="2048">\n' );
 		b.add( '<rect x="${f(-r)}" y="${f(-r)}" width="${f(span)}" height="${f(span)}" fill="${hex(palette.paper)}"/>\n' );
+
+		if (model.river != null) {
+			var river = model.river;
+			b.add( '<g id="water">\n' );
+			b.add( shape( river.banks, hex( palette.medium ), hex( palette.dark ), Brush.NORMAL_STROKE ) );
+			b.add( '</g>\n' );
+		}
 
 		b.add( '<g id="roads" fill="none" stroke-linecap="round">\n' );
 		for (road in model.roads) {
@@ -88,6 +96,9 @@ class MapExporter {
 			addWall( b, cast( model.citadel.ward, Castle ).wall, hex( palette.dark ) );
 		b.add( '</g>\n' );
 
+		if (model.river != null)
+			b.add( addBridges( model.river, hex( palette.paper ), hex( palette.dark ) ) );
+
 		b.add( addLabels( model, hex( palette.dark ) ) );
 
 		b.add( '</svg>\n' );
@@ -119,6 +130,28 @@ class MapExporter {
 		cannot disagree about which ones a map has. A plan places a label by
 		its centre; SVG anchors text at its baseline, hence the shift.
 	**/
+	// Drawn the way a road is, a dark casing with the paper colour down the
+	// middle, so the deck reads as continuous with the road either side.
+	static function addBridges( river:com.watabou.towngenerator.building.River, paper:String, colour:String ):String {
+		var span = river.width * 0.8;
+
+		var b = new StringBuf();
+		b.add( '<g id="bridges" stroke-linecap="butt">\n' );
+
+		for (bridge in river.bridges) {
+			var half = bridge.dir.norm( span );
+			var from = bridge.at.subtract( half );
+			var to = bridge.at.add( half );
+
+			var line = 'x1="${f(from.x)}" y1="${f(from.y)}" x2="${f(to.x)}" y2="${f(to.y)}"';
+			b.add( '<line $line stroke="$colour" stroke-width="${f(Ward.MAIN_STREET + Brush.NORMAL_STROKE * 3)}"/>\n' );
+			b.add( '<line $line stroke="$paper" stroke-width="${f(Ward.MAIN_STREET)}"/>\n' );
+		}
+
+		b.add( '</g>\n' );
+		return b.toString();
+	}
+
 	static function addLabels( model:Model, colour:String ):String {
 		var plan = LabelPlan.build( model );
 

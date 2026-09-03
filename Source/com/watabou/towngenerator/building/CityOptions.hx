@@ -51,6 +51,12 @@ class CityOptions {
 	// How many patches the inner ring encloses.
 	public var coreSize		: Int = 5;
 
+	// A river across the map. Off unless asked for, and deliberately not
+	// rolled: a roll would have to come out of the city's own random sequence
+	// to be reproducible from the seed, and drawing from that sequence is the
+	// one thing a river must not do. See `River`.
+	public var river		: Bool = false;
+
 	public var placements	: Array<WardPlacement> = [];
 
 	// Named points of interest, distributed over the city's districts.

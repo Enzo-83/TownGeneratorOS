@@ -61,6 +61,10 @@ class Menu extends Sprite {
 			"A market square the streets run to",
 			function( on ) { StateManager.plaza = on; rebuild(); } ) );
 
+		add( new ToggleButton( "River", model.river != null,
+			"A river across the map. The city underneath it is the same either way",
+			function( on ) { StateManager.river = on; rebuild(); } ) );
+
 		gap();
 
 		add( new ActionButton( "Save SVG", "Vector map, from the model not the screen (S)",

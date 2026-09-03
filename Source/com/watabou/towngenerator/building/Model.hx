@@ -42,7 +42,12 @@ class Model {
 
 	private var innerWallNeeded	: Bool;
 	private var coreSize		: Int;
+	private var riverNeeded		: Bool;
 	private var placements		: Array<WardPlacement>;
+
+	// What the river's own random stream is seeded from, so a river is
+	// reproducible from the same URL as the city it runs through.
+	private var citySeed		: Int;
 
 	// Set this before constructing a Model to steer generation.
 	// Left null, the generator behaves exactly as it did upstream.
@@ -75,8 +80,13 @@ class Model {
 	// The patches the inner ring encloses.
 	public var core		: Array<Patch>;
 
-	// Placements that could not be honoured as asked, so a caller can
-	// tell "the district is where I said" from "the district is somewhere".
+	// The river, when there is one. Null is the default and the whole point:
+	// see River's own comment for why it can only ever be an afterthought.
+	public var river	: River;
+
+	// Anything asked for that the layout could not give, so a caller can tell
+	// "it is where I said" from "it is somewhere" — and, for the river, from
+	// "there isn't one".
 	public var placementWarnings	: Array<String>;
 
 	public var cityRadius	: Float;
@@ -110,6 +120,10 @@ class Model {
 		if (seed > 0) Random.reset( seed )
 		else if (opts.seed > 0) Random.reset( opts.seed );
 
+		// Before anything draws, so this is the seed and not a state part way
+		// through the sequence.
+		citySeed = Random.getSeed();
+
 		this.nPatches = nPatches != -1 ? nPatches : (opts.size > 0 ? opts.size : 15);
 
 		// These three are always drawn, in this order, even when the caller
@@ -124,6 +138,7 @@ class Model {
 
 		innerWallNeeded	= opts.innerWall;
 		coreSize		= opts.coreSize;
+		riverNeeded		= opts.river;
 		placements		= opts.placements != null ? opts.placements : [];
 		landmarks		= opts.landmarks != null ? opts.landmarks : [];
 
@@ -139,6 +154,7 @@ class Model {
 	private function build():Void {
 		streets = [];
 		roads = [];
+		river = null;
 
 		buildPatches();
 		optimizeJunctions();
@@ -148,6 +164,14 @@ class Model {
 		nameWards();
 		assignLandmarks();
 		buildGeometry();
+
+		// Last, and on a layout that is already finished. ⛔ It must stay
+		// last, and it must never touch `Random` — see `River`.
+		if (riverNeeded) {
+			river = River.build( this, citySeed );
+			if (river == null)
+				placementWarnings.push( "river: no course across the map, not drawn" );
+		}
 	}
 
 	/**
@@ -653,14 +677,23 @@ class Model {
 	}
 
 	private function buildGeometry():Void {
-		buildingCount = 0;
-
-		for (patch in patches) {
+		for (patch in patches)
 			patch.ward.createGeometry();
 
+		recountBuildings();
+	}
+
+	/**
+		Counts what is standing. Called again after the river takes away the
+		buildings it covers, since the population figure is derived from this
+		rather than kept alongside it.
+	**/
+	public function recountBuildings():Void {
+		buildingCount = 0;
+
+		for (patch in patches)
 			if (patch.withinCity && patch.ward.geometry != null)
 				buildingCount += patch.ward.geometry.length;
-		}
 	}
 
 

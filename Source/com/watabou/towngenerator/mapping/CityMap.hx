@@ -11,6 +11,7 @@ import com.watabou.geom.Polygon;
 import com.watabou.towngenerator.wards.*;
 import com.watabou.towngenerator.building.CurtainWall;
 import com.watabou.towngenerator.building.Model;
+import com.watabou.towngenerator.building.River;
 
 using com.watabou.utils.ArrayExtender;
 using com.watabou.utils.GraphicsExtender;
@@ -30,6 +31,12 @@ class CityMap extends Sprite {
 		brush = new Brush( palette );
 
 		var model = Model.instance;
+
+		// First, so everything else is drawn over it: a road that crosses the
+		// water reads as crossing it, and the buildings the river cleared are
+		// simply not there to draw.
+		if (model.river != null)
+			drawRiver( model.river );
 
 		for (road in model.roads) {
 			var roadView = new Shape();
@@ -79,6 +86,11 @@ class CityMap extends Sprite {
 
 		if (model.citadel != null)
 			drawWall( walls.graphics, cast( model.citadel.ward, Castle).wall, true );
+
+		// After the walls, since a bridge carries a road over the water and a
+		// wall crossing it is only a water gate.
+		if (model.river != null)
+			drawBridges( walls.graphics, model.river );
 
 		// The bar first, so its caption — which arrives with the labels —
 		// is drawn over it rather than under.
@@ -155,6 +167,46 @@ class CityMap extends Sprite {
 		g.lineTo( s.x + s.length / 2, s.y + s.tick );
 
 		addChild( bar );
+	}
+
+	/**
+		The water: a band in the middle tone with its banks drawn, which tells
+		it apart from a park (no outline) and from a road (paper down the
+		middle).
+	**/
+	private function drawRiver( river:River ):Void {
+		var water = new Shape();
+		var g = water.graphics;
+
+		g.lineStyle( Brush.NORMAL_STROKE, palette.dark );
+		g.beginFill( palette.medium );
+		g.drawPolygon( river.banks );
+		g.endFill();
+
+		addChild( water );
+	}
+
+	/**
+		A bridge, drawn the way a road is: a dark casing with the paper colour
+		down the middle, so the deck reads as continuous with the road either
+		side of it.
+	**/
+	private function drawBridges( g:Graphics, river:River ):Void {
+		var span = river.width * 0.8;
+
+		for (bridge in river.bridges) {
+			var half = bridge.dir.norm( span );
+			var from = bridge.at.subtract( half );
+			var to = bridge.at.add( half );
+
+			g.lineStyle( Ward.MAIN_STREET + Brush.NORMAL_STROKE * 3, palette.dark, false, null, CapsStyle.NONE );
+			g.moveToPoint( from );
+			g.lineToPoint( to );
+
+			g.lineStyle( Ward.MAIN_STREET, palette.paper, false, null, CapsStyle.NONE );
+			g.moveToPoint( from );
+			g.lineToPoint( to );
+		}
 	}
 
 	private function drawRoad( g:Graphics, road:Street ):Void {
