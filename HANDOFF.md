@@ -12,6 +12,7 @@ Working notes for picking this fork up cold. The [README](README.md) says what t
 - **Double walls** — an inner ring that is not a fortification, plus the outer curtain wall
 - **Placed districts** — `core` / `between` / `city` / `plaza`
 - **District and settlement names**, fitted labels, landmarks, population, scale bar
+- **Custom district names** — `districts=` takes `ward:zone:Name`
 - **SVG and PNG export** on the `S` and `P` keys
 
 ---
@@ -21,22 +22,25 @@ Working notes for picking this fork up cold. The [README](README.md) says what t
 The order matters more than the list, and it is **not** the order you would get from
 working down the version gap to the released 0.11.4.
 
-### 1. Custom district names — small, and the most valuable thing left
+### 1. ✅ Custom district names — done
 
-Landmarks can be named by the caller. **Districts cannot** — they get generated names, so a
-map of a real place labels its market quarter "Brambletown" instead of the name it actually
-has. There is currently no fix for that short of editing the exported SVG in a vector
-editor, which is exactly what a user without one cannot do.
+`districts=` takes `ward:zone:Name`. `WardPlacement` has a `name` field, `parsePlacements`
+no longer lowercases the whole entry (only the ward and zone tokens), and `placeWards` sets
+`ward.name`, which `nameWards` then leaves alone.
 
-Extend the placement syntax from `ward:zone` to `ward:zone:Name`:
+⚠️ **`nameWards` still rolls the generated name for a district the caller named, and throws
+it away.** `buildGeometry` runs after `nameWards` and draws from the same sequence, so
+skipping the roll would move every building in the city — naming a district would silently
+relayout the map. Same pattern as the plaza/citadel/wall rolls. Verified: `#buildings`
+hashes identically with and without the names on `?size=24&seed=149&…`.
 
-```
-districts=market:between:The Velvet Road,craftsmen:core:The Awoken Steel
-```
+Landmarks are kept off hand-named districts (`Model.namedPatches`), since a landmark
+supersedes the district label it lands on.
 
-`CityOptions.parsePlacements` already splits on `:`; `WardPlacement` gains a `name` field,
-and `Model.placeWards` sets `ward.name` from it instead of leaving it to `nameWards()`.
-Generated names stay the fallback for everything unnamed.
+> ⛔ **A long custom name is dropped, not shrunk.** `LabelView.fit` returns null below
+> `MIN_FIT`, so "The Velvet Road" vanished from `?size=24&seed=149&…` while "Velvet"
+> printed. A name the user typed by hand is the one label that must never silently
+> disappear — fixed as part of 2 below.
 
 ### 2. Label collision rejection — cheap, and now worth it
 
@@ -45,6 +49,16 @@ so labels in small adjacent patches can collide. The released generator solved t
 properly in 0.11.1 with straight-skeleton placement; **that is not what to build.** Keep a
 list of placed label bounding boxes, test each new one against it, and drop or shrink on
 overlap. Most of the benefit, a fraction of the work.
+
+Reserve in priority order — title, population line, scale caption, landmarks, **hand-named
+districts**, then generated names — and only let the last group be dropped. A hand-named
+district should also be clamped to `MIN_FIT` rather than dropped, per the note above.
+
+⚠️ **Whatever you build has to run identically in `CityMap.addLabels` and
+`MapExporter.addLabels`**, which are two parallel loops over `model.patches` today.
+Collision rejection depends on placement order, so parallel code will drift into
+disagreement between the screen and the SVG. Compute the placements once and have both
+renderers consume them.
 
 ### 3. A menu — moderate
 

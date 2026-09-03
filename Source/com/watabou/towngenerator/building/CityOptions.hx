@@ -19,10 +19,14 @@ enum PlacementZone {
 /**
 	A ward the caller wants put somewhere on purpose, rather than
 	left to the weighted shuffle in `Model.WARDS`.
+
+	`name` is the district's label. Left null, `Toponymy` invents one —
+	which is what every unplaced ward gets.
 **/
 typedef WardPlacement = {
 	var ward : Class<Ward>;
 	var zone : PlacementZone;
+	var name : Null<String>;
 }
 
 /**
@@ -101,11 +105,17 @@ class CityOptions {
 	/**
 		Parses a placement list of the form
 
-			craftsmen:core,market:plaza,park:between
+			craftsmen:core,market:plaza:The Velvet Road,park:between
 
 		Unknown ward or zone names are skipped rather than thrown, so one
 		typo in a URL costs you a district instead of the whole map.
-		A missing zone defaults to `city`.
+		A missing zone defaults to `city`; a missing name is generated.
+
+		Only the ward and zone tokens are case-folded. A name is kept exactly
+		as it was written, since that is the entire point of supplying one —
+		which is why the whole entry is no longer lowercased before splitting.
+		A name may contain spaces and colons; it may not contain a comma,
+		which is what separates one placement from the next.
 	**/
 	public static function parsePlacements( spec:String ):Array<WardPlacement> {
 		var result:Array<WardPlacement> = [];
@@ -113,19 +123,23 @@ class CityOptions {
 			return result;
 
 		for (entry in spec.split( "," )) {
-			var parts = StringTools.trim( entry ).toLowerCase().split( ":" );
-			if (parts[0] == "")
-				continue;
+			var parts = StringTools.trim( entry ).split( ":" );
 
-			var ward = WARD_TYPES.get( parts[0] );
+			var ward = WARD_TYPES.get( StringTools.trim( parts[0] ).toLowerCase() );
 			if (ward == null)
 				continue;
 
-			var zone = parts.length > 1 ? ZONES.get( parts[1] ) : WithinCity;
+			var zone = parts.length > 1 ?
+				ZONES.get( StringTools.trim( parts[1] ).toLowerCase() ) : WithinCity;
 			if (zone == null)
 				zone = WithinCity;
 
-			result.push( { ward: ward, zone: zone } );
+			// Everything after the zone is the name, rejoined, so a colon in
+			// "St Mark: the Elder" survives the split.
+			var name = parts.length > 2 ?
+				StringTools.trim( parts.slice( 2 ).join( ":" ) ) : "";
+
+			result.push( { ward: ward, zone: zone, name: name != "" ? name : null } );
 		}
 
 		return result;

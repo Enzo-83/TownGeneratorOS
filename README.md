@@ -63,6 +63,24 @@ An impossible spec would otherwise rebuild the city forever. Every compromise is
 in `Model.placementWarnings`, so a caller can tell *the district is where I asked* from
 *the district is somewhere*.
 
+A placement may also carry **the district's name**, as a third field:
+
+```
+districts=market:between:The Velvet Road,craftsmen:core:The Awoken Steel
+```
+
+Without it a district gets a generated name, so a map of a real place labels its market
+quarter "Brambletown" instead of what it is actually called — and the only fix was editing
+the exported SVG in a vector editor, which is exactly what a user without one cannot do.
+Generated names remain the fallback for everything left unnamed.
+
+Only the ward and zone are case-folded; the name is kept exactly as written. It may contain
+spaces and colons, but not a comma, which separates one placement from the next.
+
+**Naming a district does not move anything.** The generated name is still rolled and thrown
+away, because ward geometry is built afterwards from the same random sequence — skipping
+the roll would shift every building in the city.
+
 ### Names and labels
 
 **The upstream source draws no text at all** — no district names, no settlement name, no
@@ -95,6 +113,9 @@ both in one patch yields two unreadable labels.
 **Placement is random**, which reproduces the released generator's behaviour — a landmark
 list is scattered, not positioned. Reroll the seed until it lands somewhere you can live with.
 
+Landmarks do avoid **hand-named** districts, since a name you wrote yourself is not something
+to overwrite by a scatter. Generated names are fair game.
+
 ### Export
 
 | Key | Writes |
@@ -123,14 +144,14 @@ Upstream's build reads only `size` and `seed`. This fork adds the rest:
 | `walls` | `0` / `1` | rolled |
 | `innerwall` | `0` / `1` | `0` |
 | `core` | 2–30 — patches inside the inner ring | 5 |
-| `districts` | `ward:zone,ward:zone,…` | none |
+| `districts` | `ward:zone:Name,…` — zone and name both optional | none |
 | `name` | the settlement's name | generated |
 | `landmarks` | comma-separated names | none |
 
 Ward names for `districts`: `craftsmen`, `merchant`, `cathedral`, `administration`,
 `slum`, `patriciate`, `market`, `military`, `park`, `gate`, `farm`.
 An unknown ward or zone name is skipped, so one typo costs you a district rather than the
-whole map. A missing zone defaults to `city`.
+whole map. A missing zone defaults to `city`; a missing name is generated.
 
 `CommonWard` and `Castle` are deliberately not placeable. `CommonWard` is the base class
 the residential wards extend, and its constructor takes density parameters as well —
@@ -138,7 +159,7 @@ building one with just `(model, patch)` leaves `minSq` null, and `Ward.createAll
 subdivides until the stack gives out. `Castle` belongs to the citadel and raises its own wall.
 
 ```
-?size=24&seed=149&walls=1&innerwall=1&core=6&districts=craftsmen:core,market:plaza,park:between
+?size=24&seed=149&walls=1&innerwall=1&core=6&districts=craftsmen:core:The Awoken Steel,market:plaza,park:between
 ```
 
 **Seeds still reproduce upstream's cities.** The three rolls for plaza, citadel and walls

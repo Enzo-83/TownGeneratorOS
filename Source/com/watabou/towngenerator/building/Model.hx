@@ -79,6 +79,12 @@ class Model {
 	// tell "the district is where I said" from "the district is somewhere".
 	public var placementWarnings	: Array<String>;
 
+	// Patches whose district name came from the caller rather than Toponymy.
+	// A landmark supersedes the label of the district it lands on, so it is
+	// kept off these: a hand-written name is not something to overwrite by
+	// a random scatter.
+	private var namedPatches		: Array<Patch>;
+
 	public var cityRadius	: Float;
 
 	public var cityName		: String;
@@ -161,7 +167,8 @@ class Model {
 			return;
 
 		var available = patches.filter( function( p:Patch )
-			return p.withinCity && p.ward != null && p.ward.name != null );
+			return p.withinCity && p.ward != null && p.ward.name != null &&
+				!namedPatches.contains( p ) );
 
 		for (name in landmarks) {
 			if (available.length == 0)
@@ -175,6 +182,13 @@ class Model {
 	/**
 		Gives every district inside the city a proper name. Patches outside it
 		are left unnamed — farmland does not get called anything.
+
+		A district the caller named in `placements` already carries that name;
+		its generated name is still **rolled and thrown away**, for the same
+		reason the plaza, citadel and wall rolls are. `buildGeometry` runs
+		after this and draws from the same sequence, so skipping the roll for
+		a named district would move every building in the city — and naming a
+		district is not supposed to relayout the map.
 	**/
 	private function nameWards():Void {
 		cityName = options != null && options.name != null && options.name != "" ?
@@ -187,7 +201,10 @@ class Model {
 				// Districts on the edge take a compass prefix more often,
 				// which is how the outskirts of a real city get named.
 				var outer = wall != null ? !patch.withinWalls : !patch.withinInnerWall;
-				patch.ward.name = Toponymy.district( type, outer );
+				var generated = Toponymy.district( type, outer );
+
+				if (patch.ward.name == null)
+					patch.ward.name = generated;
 			}
 	}
 
@@ -589,9 +606,13 @@ class Model {
 	**/
 	private function placeWards( unassigned:Array<Patch> ):Void {
 		placementWarnings = [];
+		namedPatches = [];
 
 		for (placement in placements) {
-			var name = Type.getClassName( placement.ward ).split( "." ).pop();
+			var type = Type.getClassName( placement.ward ).split( "." ).pop();
+			// Warnings name the district the way the caller asked for it,
+			// so "The Velvet Road" is findable in the list they wrote.
+			var label = placement.name != null ? '${placement.name} ($type)' : type;
 
 			var candidates = unassigned.filter(
 				function( patch:Patch ) return matchesZone( patch, placement.zone ) );
@@ -600,11 +621,11 @@ class Model {
 				candidates = unassigned.filter( function( patch:Patch ) return patch.withinCity );
 				if (candidates.length > 0)
 					placementWarnings.push(
-						'$name: nothing free in the zone asked for, placed elsewhere in the city' );
+						'$label: nothing free in the zone asked for, placed elsewhere in the city' );
 			}
 
 			if (candidates.length == 0) {
-				placementWarnings.push( '$name: no free patch left, not placed' );
+				placementWarnings.push( '$label: no free patch left, not placed' );
 				continue;
 			}
 
@@ -615,6 +636,11 @@ class Model {
 					return Reflect.callMethod( placement.ward, rateFunc, [this, patch] ) );
 
 			best.ward = Type.createInstance( placement.ward, [this, best] );
+			// The name follows the ward wherever it landed, including into a
+			// zone the layout could not honour. `nameWards` leaves it alone.
+			best.ward.name = placement.name;
+			if (placement.name != null)
+				namedPatches.push( best );
 			unassigned.remove( best );
 		}
 	}
