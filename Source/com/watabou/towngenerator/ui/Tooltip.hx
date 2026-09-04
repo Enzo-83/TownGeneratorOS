@@ -15,6 +15,22 @@ class Tooltip extends Bitmap {
 
 	public static var instance : Tooltip;
 
+	/**
+		Silences the tooltip while something is in front of the map.
+
+		⚠️ Clearing it once as the context menu opens is not enough. The cursor
+		is still over a patch, and the patch keeps raising its label from under
+		the menu — so the tooltip comes back, at whatever position it last had,
+		which is the top-left corner if it has never been moved.
+	**/
+	public static var blocked(default, set) : Bool = false;
+	static function set_blocked( value:Bool ):Bool {
+		blocked = value;
+		if (value && instance != null)
+			instance.visible = false;
+		return value;
+	}
+
 	private static var cache : Map<String, BitmapData> = new Map();
 
 	public function new() {
@@ -36,14 +52,22 @@ class Tooltip extends Bitmap {
 			stage.removeEventListener( MouseEvent.MOUSE_DOWN, onMouseMove );
 		}
 
+	private function onMouseMove( e:MouseEvent ) {
+		place();
+		e.updateAfterEvent();
+	}
+
 	/**
 		Beside the cursor, but kept on screen.
 
-		⚠️ Not simply `mouseX + 4`. The menu is against the right-hand edge, so
-		every tooltip it raises starts off the side of the window and the one
-		place a hint is most needed is the one place it could not be read.
+		⚠️ Not simply `mouseX + 4`. The map fills the window now that the
+		buttons are gone, so a patch can be pointed at right against the right
+		or bottom edge, and its label would open off the side of the window.
 	**/
-	private function onMouseMove( e:MouseEvent ) {
+	private function place() {
+		if (stage == null || parent == null)
+			return;
+
 		// The scene is scaled by Game.layout, so the stage is this many
 		// scene units across.
 		var limitX = stage.stageWidth / parent.scaleX;
@@ -51,12 +75,11 @@ class Tooltip extends Bitmap {
 
 		x = Math.max( 0, Math.min( parent.mouseX + 4, limitX - width - 1 ) );
 		y = Math.max( 0, Math.min( parent.mouseY, limitY - height - 1 ) );
-
-		e.updateAfterEvent();
 	}
 
 	public function set( txt:String ) {
-		visible = (txt != null);
+		visible = (txt != null && !blocked);
+
 		if (visible) {
 			var bmp:BitmapData = cache[txt];
 			if (bmp == null) {
@@ -66,6 +89,13 @@ class Tooltip extends Bitmap {
 				cache[txt] = bmp;
 			}
 			bitmapData = bmp;
+
+			// ⚠️ Positioned here as well as on mouse move. Regenerating the
+			// city builds a new scene under a cursor that has not moved, so
+			// the patch beneath it raises its label straight away — and
+			// without this the label appears in the top-left corner and stays
+			// there until the mouse is nudged.
+			place();
 		}
 	}
 }

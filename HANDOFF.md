@@ -15,7 +15,7 @@ Working notes for picking this fork up cold. The [README](README.md) says what t
 - **Custom district names** — `districts=` takes `ward:zone:Name`
 - **Label collision rejection**, halos, and one `LabelPlan` behind both renderers
 - **SVG and PNG export** on the `S` and `P` keys, and in the menu
-- **A menu** — sizes, reroll, walls/ring/citadel/plaza/river toggles, both exports
+- **A right-click menu** — sizes, reroll, walls/ring/citadel/plaza/river toggles, exports
 - **A river**, opt-in, that provably does not change the city it runs through
 
 ---
@@ -96,11 +96,36 @@ collides now prints a ring through its neighbour.
 > page x: it disagreed with the screen renderer, and sat outside the box the collision test
 > had reserved for it. The shift now goes on the `<text>` inside the transform.
 
-### 3. ✅ A menu — done
+### 3. ✅ A menu — done, then rebuilt as a context menu
 
-`ui/Menu.hx`, down the right-hand edge: the four sizes, **New City**, toggles for walls /
-ring / citadel / plaza, and both exports. `Button` grew a `hint` for the tooltip and a
-`setLabel`; `ActionButton` and `ToggleButton` sit on top of it. `S` and `P` still work.
+It began as `ui/Menu.hx`, a column of buttons down the right-hand edge, extending the four
+size buttons upstream already had. **That is gone.** The released generator dropped the
+on-screen column for a right-click context menu, and this now matches it: `ui/ContextMenu.hx`
+holds the sizes, **New City**, toggles for walls / ring / citadel / plaza / river, and both
+exports. `Button`, `CitySizeButton`, `ActionButton`, `ToggleButton` and `Menu` were all
+deleted with it. `S` and `P` still work.
+
+Things worth knowing if you touch it:
+
+- ⛔ **`stage.showDefaultContextMenu = false` is what suppresses the browser's own menu,
+  and there is no other hook.** Lime calls `preventDefault` on the `contextmenu` event only
+  when OpenFL has cancelled the mouse event underneath it, and OpenFL only cancels it when
+  that flag is false. Verified rather than assumed: a `contextmenu` listener on `window`
+  reports `defaultPrevented: true` on the canvas.
+- **The menu clamps itself into the window.** The map fills the window now, so the corners
+  are ordinary places to right-click, and a menu that opens at the cursor would hang off
+  the bottom right — which is where a 12-row menu is taller than the space under the
+  cursor almost anywhere.
+- ⚠️ **The tooltip needed two fixes to coexist with it.** `Tooltip.blocked` stops a patch
+  under the open menu from raising its label — clearing the tooltip once on open is not
+  enough, because the cursor is still over the patch. And `Tooltip.place` is now called
+  from `set` as well as from mouse-move: regenerating builds a new scene under a cursor
+  that has not moved, so the new patch's label used to appear in the top-left corner and
+  stay there until the mouse was nudged.
+- **A hint reads `right-click for options`** until the menu is first opened
+  (`ContextMenu.everOpened`, static so it survives the scene rebuild). Without it this
+  change would undo the discoverability the menu was built for in the first place. It uses
+  `Main.hintFont`, because `Main.uiFont` is the paper colour — invisible on the map.
 
 A toggle reads its state from the finished `Model` (`model.wall != null`), not from
 `StateManager`, so it shows what the map actually has. Those differ whenever a parameter
@@ -213,7 +238,12 @@ Haxe's html5 output is **module-scoped**. Classes are not on `window`, so you ca
 `Model.instance` from the console even though class names appear in stack traces.
 
 Synthetic key events from an automation harness may not reach OpenFL, which listens on
-`window`. To verify the exporters end to end, intercept the download instead:
+`window`. **Mouse events do**, which is what makes the context menu testable: a harness
+right-click opens it, hovering highlights a row, and clicking one runs it. A harness
+`Escape` does *not* arrive — dispatch it on `window` yourself, as below, before concluding
+the handler is broken.
+
+To verify the exporters end to end, intercept the download instead:
 
 ```js
 window.__captured = null;

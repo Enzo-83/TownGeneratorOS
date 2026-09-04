@@ -180,13 +180,25 @@ Both the screen and the SVG take their labels from the same `LabelPlan`, so the 
 disagree about which labels a map has — which they otherwise would, since collision
 rejection depends on the order labels are placed in.
 
-Both are also in the menu, which is where anyone who has not read this will find them.
+Both are also on the right-click menu, which is where anyone who has not read this will
+find them.
 
 ### The menu
 
-Down the right-hand edge: the four city sizes, **New City** for another one the same size,
+**Right-click anywhere.** The four city sizes, **New City** for another one the same size,
 toggles for **walls**, the inner **ring**, the **citadel**, the **plaza** and the **river**,
-and the two exports. Each has a tooltip.
+and the two exports. Escape or a click elsewhere dismisses it.
+
+Upstream put four size buttons down the edge of the window and this fork added the rest to
+that column. The released generator dropped the whole thing for a context menu, and it is
+the better trade: the map is the point of the window, and a menu that is only there when
+it is asked for costs it nothing. The buttons are gone — `Button`, `CitySizeButton` and
+their descendants with them.
+
+⚠️ **What a context menu costs is that nothing on screen says it is there**, which is
+exactly the complaint that got the buttons built when export was on an unmarked `S`. So
+the map carries `right-click for options` in one corner until the menu has been opened
+once, and then never again.
 
 A toggle reads its state from the finished model rather than from the parameters, so it
 shows what the map on screen actually has. Those differ whenever a parameter was left to
