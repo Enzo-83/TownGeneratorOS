@@ -116,6 +116,38 @@ straddling a river has a crossing.
 sequence to be reproducible from the seed, and drawing from that sequence is the one thing
 the river must not do.
 
+### Farmland
+
+**Upstream drew a farm as its farmhouse and nothing else** — a four-unit square in a patch
+a hundred units across. There was no way to tell a farm from empty country except by
+hovering over it, and no way at all on an exported map.
+
+A farm now has fields: the patch is halved across its longest edge until the parcels are
+small enough, which follows the shape of the patch and gives the wonky quadrilaterals
+fields actually come in, rather than the pie slices a radial cut would. They are drawn as
+outlines in the middle tone and exported as their own `fields` group — a field is a line on
+the ground, not a thing standing on it, and filled in the building ink a parcel that size
+reads as a warehouse.
+
+> ⛔ **The fields draw from a generator of their own, never from `Random`.**
+>
+> Fields were added to a generator whose seeds are already spoken for. `Farm.createGeometry`
+> makes three draws from the shared sequence to site its farmhouse, and those are untouched
+> and in the same order — one extra draw would move every building in every city that has a
+> farm in it. The parcelling uses an `Rng` seeded from the patch's own position, so it needs
+> nothing from the sequence at all. Same reasoning as the river.
+>
+> Verified: on the same seed before and after, the `buildings`, `roads` and `walls` groups
+> of the exported SVG hash identically, all 994 building polygons match, and no label
+> changed.
+
+Fields are deliberately kept out of `Ward.geometry`, which is buildings — and buildings are
+what the population is counted from. A farm placed inside the city with `districts=farm:…`
+would otherwise report every field as a house.
+
+Only about a fifth of countryside patches become farms, as before; the rest stay open
+country, which is what keeps the map from turning into uniform hatching.
+
 ### Names and labels
 
 **The upstream source draws no text at all** — no district names, no settlement name, no

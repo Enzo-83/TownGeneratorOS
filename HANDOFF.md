@@ -17,6 +17,7 @@ Working notes for picking this fork up cold. The [README](README.md) says what t
 - **SVG and PNG export** on the `S` and `P` keys, and in the menu
 - **A right-click menu** — sizes, reroll, walls/ring/citadel/plaza/river toggles, exports
 - **A river**, opt-in, that provably does not change the city it runs through
+- **Fields on farms**, which upstream left as a bare farmhouse in an empty patch
 
 ---
 
@@ -187,6 +188,28 @@ Things worth knowing if you touch it:
   left blocks sliced by the bank standing in the current.
 - **`LabelPlan` reserves the water** before it places anything, so no name is printed
   mid-current. Hand-named districts still override that, because `fitInsistent` does.
+
+### Farmland, added after the fact
+
+A farm was its farmhouse and nothing else — four units square in a patch a hundred units
+across — so it was indistinguishable from open country on the map, and only the hover label
+gave it away. `Farm.fields` parcels the patch; `CityMap.drawFarmland` and the SVG's
+`fields` group draw the boundaries.
+
+- ⛔ **`Farm.createGeometry`'s three `Random` draws are untouched and must stay that way.**
+  They site the farmhouse out of the shared sequence, so adding to them or reordering them
+  moves every building in every city that contains a farm. The parcelling uses an `Rng`
+  seeded from the patch's own centroid, which needs nothing from the sequence — and `Cutter`
+  is pure geometry with no `Random` in it, which is what makes that possible.
+- **Fields are not in `Ward.geometry`.** Geometry is buildings and buildings are what the
+  population is counted from, so a farm placed inside the city with `districts=farm:…` would
+  otherwise report its fields as houses.
+- ⚠️ **`MAX_DEPTH` caps the recursion at five bisections**, however large the patch. This is
+  the same recursion shape that already overflows the stack in `createAlleys`; a hard cap
+  costs a few oversized parcels on a metropolis and cannot run away.
+- **Farmland is drawn before the roads**, in its own pass rather than inside the patch loop,
+  so a road crosses a field instead of being buried under one — and so the screen agrees
+  with the order the SVG writes its groups in.
 
 ### Deliberately not doing
 

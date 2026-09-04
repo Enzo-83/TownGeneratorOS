@@ -56,6 +56,8 @@ class MapExporter {
 			b.add( '</g>\n' );
 		}
 
+		b.add( addFields( model, hex( palette.medium ) ) );
+
 		b.add( '<g id="roads" fill="none" stroke-linecap="round">\n' );
 		for (road in model.roads) {
 			b.add( '<polyline points="${points(road)}" stroke="${hex(palette.medium)}" stroke-width="${f(Ward.MAIN_STREET + Brush.NORMAL_STROKE)}"/>\n' );
@@ -77,6 +79,9 @@ class MapExporter {
 						b.add( shape( block, hex( palette.light ), hex( palette.dark ), Brush.NORMAL_STROKE ) );
 				case Market, CraftsmenWard, MerchantWard, GateWard, Slum,
 					 AdministrationWard, MilitaryWard, PatriciateWard, Farm:
+					// A farm's fields are not here — they are lines on the
+					// ground rather than buildings, and they have their own
+					// group. This draws only its farmhouse.
 					for (block in patch.ward.geometry)
 						b.add( shape( block, hex( palette.light ), hex( palette.dark ), Brush.NORMAL_STROKE ) );
 				case Park:
@@ -102,6 +107,38 @@ class MapExporter {
 		b.add( addLabels( model, hex( palette.dark ) ) );
 
 		b.add( '</svg>\n' );
+		return b.toString();
+	}
+
+	/**
+		Field boundaries, in their own group: outlines in the middle tone,
+		under everything else, because a road crosses a field rather than the
+		other way round.
+	**/
+	static function addFields( model:Model, colour:String ):String {
+		var b = new StringBuf();
+		var any = false;
+
+		for (patch in model.patches) {
+			if (!Std.isOfType( patch.ward, Farm ))
+				continue;
+
+			var fields = cast( patch.ward, Farm ).fields;
+			if (fields == null)
+				continue;
+
+			if (!any) {
+				b.add( '<g id="fields" fill="none" stroke="$colour" stroke-width="${f(Brush.THIN_STROKE)}">\n' );
+				any = true;
+			}
+
+			for (field in fields)
+				b.add( '<polygon points="${points( field )}"/>\n' );
+		}
+
+		if (any)
+			b.add( '</g>\n' );
+
 		return b.toString();
 	}
 

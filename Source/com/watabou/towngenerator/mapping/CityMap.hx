@@ -38,6 +38,11 @@ class CityMap extends Sprite {
 		if (model.river != null)
 			drawRiver( model.river );
 
+		// Before the roads, so a road crosses a field rather than being buried
+		// under one — and so that this agrees with the order the SVG writes
+		// its groups in.
+		drawFarmland( model );
+
 		for (road in model.roads) {
 			var roadView = new Shape();
 			drawRoad( roadView.graphics, road );
@@ -167,6 +172,40 @@ class CityMap extends Sprite {
 		g.lineTo( s.x + s.length / 2, s.y + s.tick );
 
 		addChild( bar );
+	}
+
+	/**
+		Every farm's field boundaries: outlines only, in the middle tone.
+
+		Unfilled and lighter than a building's, because a field is a line on
+		the ground rather than a thing standing on it — filled, a parcel this
+		size reads as a warehouse, and in the building ink it would compete
+		with the town it is supposed to sit outside.
+
+		⚠️ Upstream drew nothing here at all. A farm was its farmhouse, four
+		units square in a patch a hundred units across, so the only way to know
+		a farm was there was to hover over it.
+	**/
+	private function drawFarmland( model:Model ):Void {
+		var farmland = new Shape();
+		var g = farmland.graphics;
+
+		brush.noStroke( g );
+		brush.setStroke( g, palette.medium, Brush.THIN_STROKE );
+
+		for (patch in model.patches) {
+			if (!Std.isOfType( patch.ward, Farm ))
+				continue;
+
+			var fields = cast( patch.ward, Farm ).fields;
+			if (fields == null)
+				continue;
+
+			for (field in fields)
+				g.drawPolygon( field );
+		}
+
+		addChild( farmland );
 	}
 
 	/**
