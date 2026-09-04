@@ -11,6 +11,7 @@ import com.watabou.utils.MathUtils;
 import com.watabou.utils.Random;
 
 import com.watabou.towngenerator.wards.*;
+import com.watabou.towngenerator.building.CityOptions.Landmark;
 import com.watabou.towngenerator.building.CityOptions.PlacementZone;
 import com.watabou.towngenerator.building.CityOptions.WardPlacement;
 
@@ -102,7 +103,7 @@ class Model {
 	inline function get_population():Int
 		return Math.round( buildingCount * 6 );
 
-	private var landmarks	: Array<String>;
+	private var landmarks	: Array<Landmark>;
 
 	// List of all entrances of a city including castle gates
 	public var gates	: Array<Point>;
@@ -175,10 +176,23 @@ class Model {
 	}
 
 	/**
-		Sites the caller's points of interest, one to a district. Placement is
-		random — this reproduces the released generator's behaviour, where a
-		landmark list is scattered rather than positioned. Reroll the seed
-		until it lands somewhere you can live with.
+		Sites the caller's points of interest, one to a district.
+
+		A landmark that names a ward type or a zone is put there. One that
+		names neither is scattered, which reproduces the released generator's
+		behaviour and is what every landmark here did before placements
+		existed.
+
+		> ⛔ **Exactly one draw from `Random` per landmark placed, whatever its
+		> spec says.** `buildGeometry` runs after this off the same sequence, so
+		> an extra draw here — or a skipped one — moves every building in the
+		> city. It is also what makes an unplaced landmark list land exactly
+		> where it used to: filtering on "anything" returns the same patches in
+		> the same order, and the same single draw then picks the same one.
+
+		A spec that cannot be satisfied falls back to scattering rather than
+		throwing, and says so in `placementWarnings` — same bargain as a ward
+		placement, for the same reason.
 	**/
 	private function assignLandmarks():Void {
 		if (landmarks.length == 0)
@@ -191,13 +205,32 @@ class Model {
 			return p.withinCity && p.ward != null && p.ward.name != null &&
 				!p.nameFromCaller );
 
-		for (name in landmarks) {
+		for (landmark in landmarks) {
 			if (available.length == 0)
 				break;
-			var patch = available.random();
-			patch.landmark = name;
+
+			var candidates = available.filter(
+				function( patch:Patch ) return suits( patch, landmark ) );
+
+			if (candidates.length == 0) {
+				if (landmark.ward != null || landmark.zone != null)
+					placementWarnings.push(
+						'${landmark.name}: nothing free where it was asked for, scattered instead' );
+				candidates = available;
+			}
+
+			var patch = candidates.random();
+			patch.landmark = landmark.name;
 			available.remove( patch );
 		}
+	}
+
+	private function suits( patch:Patch, landmark:Landmark ):Bool {
+		if (landmark.ward != null)
+			return Type.getClass( patch.ward ) == landmark.ward;
+		if (landmark.zone != null)
+			return matchesZone( patch, landmark.zone );
+		return true;
 	}
 
 	/**

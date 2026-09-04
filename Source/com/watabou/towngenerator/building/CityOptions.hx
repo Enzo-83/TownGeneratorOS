@@ -30,6 +30,19 @@ typedef WardPlacement = {
 }
 
 /**
+	A point of interest, and where the caller wants it.
+
+	`ward` and `zone` are alternatives, not a pair: a landmark says either what
+	kind of district it belongs in or which part of the city. Left both null it
+	is scattered, which is what every landmark did before placements existed.
+**/
+typedef Landmark = {
+	var name : String;
+	var ward : Null<Class<Ward>>;
+	var zone : Null<PlacementZone>;
+}
+
+/**
 	Generation settings. Every field that can be `null` means
 	"roll for it", which is what the generator did before this existed —
 	so an untouched CityOptions reproduces upstream behaviour exactly.
@@ -60,23 +73,55 @@ class CityOptions {
 	public var placements	: Array<WardPlacement> = [];
 
 	// Named points of interest, distributed over the city's districts.
-	public var landmarks	: Array<String> = [];
+	public var landmarks	: Array<Landmark> = [];
 
 	public function new() {}
 
 	/**
-		Splits a comma-separated landmark list. Names may contain spaces;
-		they may not contain commas.
+		Parses a landmark list of the form
+
+			Temple of the Dawn,cathedral:Shrine of the Deep,core:The Silent Temple
+
+		An entry may lead with a ward type or a zone saying where the landmark
+		belongs. Without one it is scattered, exactly as before this existed.
+		Names may contain spaces and colons; they may not contain commas, which
+		is what separates one entry from the next.
+
+		⚠️ **A leading token is read as a placement only when it names a ward
+		or a zone *and* something follows it.** So "Old Market: The Hall" is a
+		landmark called exactly that, while "market: The Hall" is a landmark
+		called "The Hall" sited in a market. That ambiguity is the price of not
+		inventing a second separator, and it only bites a name whose first word
+		before a colon happens to be one of eleven ward names or four zones.
 	**/
-	public static function parseLandmarks( spec:String ):Array<String> {
-		var result:Array<String> = [];
+	public static function parseLandmarks( spec:String ):Array<Landmark> {
+		var result:Array<Landmark> = [];
 		if (spec == null)
 			return result;
 
 		for (entry in spec.split( "," )) {
-			var name = StringTools.trim( entry );
-			if (name != "")
-				result.push( name );
+			var text = StringTools.trim( entry );
+			if (text == "")
+				continue;
+
+			var ward:Class<Ward> = null;
+			var zone:PlacementZone = null;
+
+			var colon = text.indexOf( ":" );
+			if (colon > 0) {
+				var token = StringTools.trim( text.substr( 0, colon ) ).toLowerCase();
+				var rest = StringTools.trim( text.substr( colon + 1 ) );
+
+				if (rest != "") {
+					ward = WARD_TYPES.get( token );
+					zone = ZONES.get( token );
+
+					if (ward != null || zone != null)
+						text = rest;
+				}
+			}
+
+			result.push( { name: text, ward: ward, zone: zone } );
 		}
 
 		return result;

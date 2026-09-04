@@ -187,15 +187,34 @@ which puts a 2,100-person town at roughly 18 hectares, about right for the perio
 
 ### Landmarks
 
-A comma-separated list of points of interest, scattered one to a district and drawn as a
-marker with its name beneath. A landmark supersedes its district's own name, since printing
-both in one patch yields two unreadable labels.
+A comma-separated list of points of interest, drawn as a marker with its name beneath. A
+landmark supersedes its district's own name, since printing both in one patch yields two
+unreadable labels.
 
-**Placement is random**, which reproduces the released generator's behaviour — a landmark
-list is scattered, not positioned. Reroll the seed until it lands somewhere you can live with.
+An entry may lead with a **ward type** or a **zone**, saying where it belongs:
 
-Landmarks do avoid **hand-named** districts, since a name you wrote yourself is not something
-to overwrite by a scatter. Generated names are fair game.
+```
+landmarks=cathedral:Temple of the Dawn,core:The Silent Temple,Shrine of the Deep Stone
+```
+
+The ward names and zones are the same ones `districts` takes. Without a leading token a
+landmark is **scattered**, which reproduces the released generator's behaviour and is what
+every landmark here did before placements existed — so an untouched landmark list lands
+exactly where it always did.
+
+⚠️ **A leading token is read as a placement only when it names a ward or a zone *and*
+something follows it.** "Old Market: The Hall" is a landmark called exactly that; "market:
+The Hall" is a landmark called "The Hall" sited in a market. That is the price of not
+inventing a second separator, and it only bites a name whose first word before a colon
+happens to be one of the eleven ward names or four zones. Names may not contain commas.
+
+A spec the city cannot satisfy — a cathedral in a town that has none — falls back to
+scattering rather than throwing, and is recorded in `Model.placementWarnings` alongside the
+ward placements.
+
+Landmarks avoid **hand-named** districts, since a name you wrote yourself is not something
+to overwrite. Generated names are fair game — which makes naming a district the way to
+protect it from being taken over by a landmark.
 
 ### Export
 
@@ -260,7 +279,7 @@ Upstream's build reads only `size` and `seed`. This fork adds the rest:
 | `river` | `0` / `1` | `0` |
 | `districts` | `ward:zone:Name,…` — zone and name both optional | none |
 | `name` | the settlement's name | generated |
-| `landmarks` | comma-separated names | none |
+| `landmarks` | `ward:Name` / `zone:Name` / `Name`, comma-separated | none |
 
 Ward names for `districts`: `craftsmen`, `merchant`, `cathedral`, `administration`,
 `slum`, `patriciate`, `market`, `military`, `park`, `gate`, `farm`.

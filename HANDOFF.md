@@ -40,8 +40,17 @@ skipping the roll would move every building in the city — naming a district wo
 relayout the map. Same pattern as the plaza/citadel/wall rolls. Verified: `#buildings`
 hashes identically with and without the names on `?size=24&seed=149&…`.
 
-Landmarks are kept off hand-named districts (`Model.namedPatches`), since a landmark
+Landmarks are kept off hand-named districts (`Patch.nameFromCaller`), since a landmark
 supersedes the district label it lands on.
+
+**Landmarks take a placement too**, added later: `landmarks=cathedral:Temple of the Dawn`,
+or a zone, or nothing at all. ⛔ **`assignLandmarks` makes exactly one `Random` draw per
+landmark placed, whatever the spec says** — `buildGeometry` runs afterwards off the same
+sequence, so an extra or skipped draw moves every building in the city. Filtering on
+"anything" returns the same patches in the same order and the same single draw then picks
+the same one, which is what keeps an unspecified list landing where it always did.
+Verified by stash-and-rebuild: identical marker coordinates, labels, and buildings, fields
+and walls hashes.
 
 > ✅ **A long custom name used to be dropped rather than shrunk.** `LabelView.fit` returns
 > null below `MIN_FIT`, so "The Velvet Road" vanished from `?size=24&seed=149&…` while
