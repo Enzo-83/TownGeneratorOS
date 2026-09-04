@@ -220,6 +220,21 @@ gave it away. `Farm.fields` parcels the patch; `CityMap.drawFarmland` and the SV
   so a road crosses a field instead of being buried under one — and so the screen agrees
   with the order the SVG writes its groups in.
 
+### Warnings on the map
+
+`Model.placementWarnings` was write-only in practice: a caller could read it from code, but
+the URL is the whole interface, so a district that quietly landed somewhere else looked
+exactly like one that landed where it was asked. `TownScene.showWarnings` prints them in the
+corner, wrapped to the window with `BitmapText.split` and on a paper backing so they stay
+legible over countryside.
+
+- ⚠️ **On screen only, and that is deliberate.** A warning is for tuning the URL; baking it
+  into the export would put scaffolding in the finished artifact. It works because both
+  exporters draw from the model or from `CityMap`, and this belongs to the scene — the same
+  reason the right-click hint stays out of them. Checked, not assumed: the exported SVG
+  matches neither "nothing free" nor "right-click".
+- **Rebuilt in `layout`**, not the constructor, because the wrap width is the window's.
+
 ### Deliberately not doing
 
 All four items above are done, so this is what remains of the version gap to the released

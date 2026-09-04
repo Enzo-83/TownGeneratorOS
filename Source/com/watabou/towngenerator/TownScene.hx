@@ -1,5 +1,6 @@
 package com.watabou.towngenerator;
 
+import openfl.display.Sprite;
 import openfl.events.KeyboardEvent;
 import openfl.events.MouseEvent;
 import openfl.geom.Point;
@@ -21,6 +22,10 @@ class TownScene extends Scene {
 	private var map		: CityMap;
 	private var menu	: ContextMenu;
 	private var hint	: BitmapText;
+	private var warnings	: Sprite;
+
+	// Breathing room between the warnings and the edge of their backing.
+	static inline var PAD = 2;
 
 	public function new() {
 		super();
@@ -31,6 +36,11 @@ class TownScene extends Scene {
 		hint = new BitmapText( Main.hintFont, "right-click for options" );
 		hint.visible = !ContextMenu.everOpened;
 		addChild( hint );
+
+		warnings = new Sprite();
+		warnings.mouseEnabled = false;
+		warnings.mouseChildren = false;
+		addChild( warnings );
 
 		addChild( new Tooltip() );
 
@@ -160,5 +170,61 @@ class TownScene extends Scene {
 
 		hint.x = 3;
 		hint.y = rHeight - hint.height - 3;
+
+		// Rebuilt here rather than in the constructor because the wrap width
+		// is the window's, and the window can be resized.
+		showWarnings();
+		warnings.x = 3;
+		warnings.y = (hint.visible ? hint.y : rHeight - 3) - warnings.height - 2;
+	}
+
+	/**
+		Anything the generator could not do as it was asked, in the corner.
+
+		`districts=cathedral:…` in a town with no cathedral, or a zone with
+		nothing free in it, quietly falls back rather than throwing — an
+		impossible spec would otherwise rebuild the city forever. That is the
+		right bargain, but it used to leave no way at all to tell *the district
+		is where I asked* from *the district is somewhere*, because
+		`Model.placementWarnings` could only be read from code and the URL is
+		the whole interface.
+
+		⚠️ **On screen only, and deliberately not in the exported SVG or PNG.**
+		A warning is for tuning the URL until the map is right; baking it into
+		the picture would put the scaffolding in the finished artifact. This
+		works because both exporters draw from the model or from `CityMap`,
+		and this belongs to the scene — the same reason the right-click hint
+		stays out of them.
+	**/
+	private function showWarnings():Void {
+		warnings.graphics.clear();
+		while (warnings.numChildren > 0)
+			warnings.removeChildAt( 0 );
+
+		var notes = Model.instance.placementWarnings;
+		if (notes == null || notes.length == 0)
+			return;
+
+		var wrap = Std.int( Math.max( rWidth - 6, 40 ) );
+
+		var y = 0.0;
+		var w = 0.0;
+
+		for (note in notes)
+			for (line in BitmapText.split( Main.hintFont, "! " + note, wrap )) {
+				line.x = PAD;
+				line.y = y + PAD;
+				y += line.height + 1;
+				w = Math.max( w, line.width );
+				warnings.addChild( line );
+			}
+
+		// On the paper colour, because these sit wherever the corner happens
+		// to be and the corner is often countryside or the edge of the town.
+		// A sprite's own graphics draw beneath its children.
+		var g = warnings.graphics;
+		g.beginFill( CityMap.palette.paper );
+		g.drawRect( 0, 0, w + PAD * 2, y + PAD * 2 - 1 );
+		g.endFill();
 	}
 }

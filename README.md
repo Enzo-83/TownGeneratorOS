@@ -63,6 +63,12 @@ An impossible spec would otherwise rebuild the city forever. Every compromise is
 in `Model.placementWarnings` — which also carries a river that could not be routed — so a
 caller can tell *the district is where I asked* from *the district is somewhere*.
 
+**Those warnings are printed in the corner of the map**, since the URL is the whole
+interface and a field only readable from code is no use to anyone driving this from an
+address bar. ⚠️ They are on screen only, and deliberately **not** in the exported SVG or
+PNG: a warning is for tuning the URL until the map is right, and baking it into the picture
+would put the scaffolding in the finished artifact.
+
 A placement may also carry **the district's name**, as a third field:
 
 ```
@@ -209,8 +215,16 @@ inventing a second separator, and it only bites a name whose first word before a
 happens to be one of the eleven ward names or four zones. Names may not contain commas.
 
 A spec the city cannot satisfy — a cathedral in a town that has none — falls back to
-scattering rather than throwing, and is recorded in `Model.placementWarnings` alongside the
+scattering rather than throwing, and is reported in the corner of the map alongside the
 ward placements.
+
+Two things commonly trigger that, and the warning is how you find out:
+
+- **`core` needs `innerwall=1`.** Without the inner ring no patch is inside it, so the zone
+  matches nothing and everything asking for it scatters.
+- **A hand-named district cannot take a landmark**, by the rule above. If you want a temple
+  in your cathedral, do not also name the cathedral district — the name and the landmark
+  are competing for the same label.
 
 Landmarks avoid **hand-named** districts, since a name you wrote yourself is not something
 to overwrite. Generated names are fair game — which makes naming a district the way to
