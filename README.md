@@ -310,6 +310,31 @@ rejection depends on the order labels are placed in.
 Both are also on the right-click menu, which is where anyone who has not read this will
 find them.
 
+### Settings
+
+**Right-click → Settings…** opens a form for the parameters that are painful to type into an
+address bar: **name**, **seed**, **size**, **core**, and the two list parameters
+**districts** and **landmarks**. The token vocabulary is printed beside them, read off the
+maps that define it so a second list cannot drift from the first.
+
+The booleans stay on the menu — one click is already less work than a form. And the URL is
+still the save format: Apply writes back through `StateManager.regenerate`, so the address
+bar always describes the map.
+
+⚠️ **Adding or removing a district or landmark changes the city**, even at the same seed:
+each placement is drawn out of the same sequence the buildings come from. Renaming one does
+not.
+
+> **Built out of DOM elements rather than drawn in the canvas.** This is a web app —
+> `js.Browser` is already used for the URL and the export blobs — and a real `<textarea>`
+> brings selection, keyboard navigation, undo and copy-paste with it. Nothing in the panel
+> touches `CityMap`, so it cannot appear in an export.
+>
+> ⛔ **Keys typed into it must not reach the scene.** OpenFL listens for keydown on
+> `window`, and `S` and `P` are the export shortcuts — without a guard, typing a district
+> name with an "s" in it downloads an SVG. Lime registers in the bubble phase, so a
+> capture-phase listener on the same target runs first and stops the event.
+
 ### The menu
 
 **Right-click anywhere.** The four city sizes, **New City** for another one the same size,

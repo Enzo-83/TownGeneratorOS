@@ -15,6 +15,7 @@ import com.watabou.towngenerator.building.Model;
 import com.watabou.towngenerator.mapping.CityMap;
 import com.watabou.towngenerator.mapping.MapExporter;
 import com.watabou.towngenerator.ui.ContextMenu;
+import com.watabou.towngenerator.ui.SettingsPanel;
 import com.watabou.towngenerator.ui.Tooltip;
 
 class TownScene extends Scene {
@@ -73,6 +74,8 @@ class TownScene extends Scene {
 			StateManager.seed = Random.getSeed();
 			regenerate();
 		} );
+
+		menu.item( "Settings...", null, function() SettingsPanel.open( regenerate ) );
 
 		menu.separator();
 
@@ -136,6 +139,12 @@ class TownScene extends Scene {
 	}
 
 	private function onRightClick( e:MouseEvent ):Void {
+		// The panel is DOM and sits above the canvas, so a right-click on it
+		// still reaches the stage. Raising the menu underneath would be a
+		// menu nobody can get to.
+		if (SettingsPanel.isOpen)
+			return;
+
 		hint.visible = false;
 		menu.open( new Point( mouseX, mouseY ), rWidth, rHeight );
 	}
