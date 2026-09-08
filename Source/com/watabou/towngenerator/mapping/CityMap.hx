@@ -25,6 +25,10 @@ class CityMap extends Sprite {
 	// How much of a tower marker is the hole in the middle.
 	static inline var HOLE = 0.45;
 
+	// The inner ring's dash, in map units.
+	public static inline var DASH	= 2.0;
+	public static inline var GAP	= 1.2;
+
 	private var patches	: Array<PatchView>;
 
 	private var brush	: Brush;
@@ -282,11 +286,15 @@ class CityMap extends Sprite {
 
 	/**
 		The inner ring, drawn as what it is: a boundary rather than a defence.
-		Thinner than the curtain wall, no towers, and left open at its gates —
-		it marks where the city ends, it does not hold the line there.
+		No towers, open at its gates, and **dashed** — which is how a map draws
+		a line that marks something rather than stops anyone.
+
+		⚠️ It used to be a thin solid line, and at export scale that is barely
+		half again the width of a building's own outline: present in the file,
+		invisible on the page. A dash is both louder and more accurate.
 	**/
 	private function drawInnerWall( g:Graphics, wall:CurtainWall ):Void {
-		g.lineStyle( Brush.NORMAL_STROKE * 1.5, palette.dark );
+		g.lineStyle( Brush.NORMAL_STROKE * 2, palette.dark );
 
 		var len = wall.shape.length;
 		for (i in 0...len) {
@@ -296,8 +304,25 @@ class CityMap extends Sprite {
 			if (wall.gates.contains( v0 ) || wall.gates.contains( v1 ))
 				continue;
 
-			g.moveToPoint( v0 );
-			g.lineToPoint( v1 );
+			dash( g, v0, v1 );
+		}
+	}
+
+	// OpenFL's Graphics has no dash pattern, so the segment is walked and the
+	// pen lifted every other step.
+	private function dash( g:Graphics, from:Point, to:Point ):Void {
+		var span = Point.distance( from, to );
+		if (span == 0)
+			return;
+
+		var step = DASH + GAP;
+		var at = 0.0;
+
+		while (at < span) {
+			var end = Math.min( at + DASH, span );
+			g.moveTo( from.x + (to.x - from.x) * at / span, from.y + (to.y - from.y) * at / span );
+			g.lineTo( from.x + (to.x - from.x) * end / span, from.y + (to.y - from.y) * end / span );
+			at += step;
 		}
 	}
 

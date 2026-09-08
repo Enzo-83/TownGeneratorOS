@@ -233,11 +233,13 @@ class Model {
 		}
 	}
 
+	// Both constraints hold when both are given: a landmark asked for a ward
+	// type *and* a zone wants a patch that is both.
 	private function suits( patch:Patch, landmark:Landmark ):Bool {
-		if (landmark.ward != null)
-			return Type.getClass( patch.ward ) == landmark.ward;
-		if (landmark.zone != null)
-			return matchesZone( patch, landmark.zone );
+		if (landmark.ward != null && Type.getClass( patch.ward ) != landmark.ward)
+			return false;
+		if (landmark.zone != null && !matchesZone( patch, landmark.zone ))
+			return false;
 		return true;
 	}
 

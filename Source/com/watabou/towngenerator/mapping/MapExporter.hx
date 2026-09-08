@@ -151,7 +151,10 @@ class MapExporter {
 				b.add( '<circle cx="${f(t.x)}" cy="${f(t.y)}" r="${f(Brush.THICK_STROKE)}" fill="$colour"/>\n' );
 	}
 
-	// Open at its gates and thinner, exactly as it is drawn on screen.
+	// Open at its gates and dashed, exactly as it is drawn on screen — a line
+	// that marks something rather than stops anyone. SVG has a dash pattern of
+	// its own, so this is one attribute where the screen walks the segment by
+	// hand.
 	static function addInnerWall( b:StringBuf, wall:com.watabou.towngenerator.building.CurtainWall, colour:String ):Void {
 		var len = wall.shape.length;
 		for (i in 0...len) {
@@ -159,7 +162,7 @@ class MapExporter {
 			var v1 = wall.shape[(i + 1) % len];
 			if (wall.gates.contains( v0 ) || wall.gates.contains( v1 ))
 				continue;
-			b.add( '<line x1="${f(v0.x)}" y1="${f(v0.y)}" x2="${f(v1.x)}" y2="${f(v1.y)}" stroke="$colour" stroke-width="${f(Brush.NORMAL_STROKE * 1.5)}"/>\n' );
+			b.add( '<line x1="${f(v0.x)}" y1="${f(v0.y)}" x2="${f(v1.x)}" y2="${f(v1.y)}" stroke="$colour" stroke-width="${f(Brush.NORMAL_STROKE * 2)}" stroke-dasharray="${f(CityMap.DASH)} ${f(CityMap.GAP)}"/>\n' );
 		}
 	}
 

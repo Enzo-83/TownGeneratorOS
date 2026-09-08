@@ -127,8 +127,10 @@ class CityOptions {
 
 			Temple of the Dawn,cathedral:Shrine of the Deep,core:The Silent Temple
 
-		An entry may lead with a ward type or a zone saying where the landmark
-		belongs. Without one it is scattered, exactly as before this existed.
+		An entry may lead with a ward type, a zone, or **both** — in either
+		order — saying where the landmark belongs. Two tokens are an `and`:
+		`cathedral:core:X` is a cathedral inside the inner ring. Without any
+		token it is scattered, exactly as before this existed.
 		Names may contain spaces and colons; they may not contain commas, which
 		is what separates one entry from the next.
 
@@ -152,18 +154,31 @@ class CityOptions {
 			var ward:Class<Ward> = null;
 			var zone:PlacementZone = null;
 
-			var colon = text.indexOf( ":" );
-			if (colon > 0) {
+			// Up to two leading tokens — a ward type and a zone, in either
+			// order — then the name. Both hold at once: `cathedral:core:X` is
+			// a cathedral *inside the inner ring*, not one or the other.
+			// Mirrors what `districts=ward:zone:Name` already reads.
+			for (pass in 0...2) {
+				var colon = text.indexOf( ":" );
+				if (colon <= 0)
+					break;
+
 				var token = StringTools.trim( text.substr( 0, colon ) ).toLowerCase();
 				var rest = StringTools.trim( text.substr( colon + 1 ) );
+				if (rest == "")
+					break;
 
-				if (rest != "") {
-					ward = WARD_TYPES.get( token );
-					zone = ZONES.get( token );
+				var asWard = WARD_TYPES.get( token );
+				var asZone = ZONES.get( token );
 
-					if (ward != null || zone != null)
-						text = rest;
-				}
+				if (asWard != null && ward == null)
+					ward = asWard
+				else if (asZone != null && zone == null)
+					zone = asZone
+				else
+					break;
+
+				text = rest;
 			}
 
 			var marked = readMarker( text, Dot );

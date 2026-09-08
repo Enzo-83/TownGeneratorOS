@@ -32,6 +32,10 @@ grew a defence. It is deliberately not a fortification:
 - **no towers**;
 - **drawn open at its gates** — the line simply stops, because the ring never had to hold
   anyone;
+- **dashed**, which is how a map draws a line that marks something rather than stops
+  anyone. ⚠️ It was a thin solid line until it was needed on a real map: at export scale
+  that is barely half again a building's own outline, so it was present in the file and
+  invisible on the page;
 - its gates are kept **out of `Model.gates`** on purpose. Streets already cross it on their
   way from the outer gates to the plaza, and anchoring more streets to it is the quickest
   way to make street building fail.
@@ -201,6 +205,13 @@ An entry may lead with a **ward type** or a **zone**, saying where it belongs:
 
 ```
 landmarks=cathedral:Temple of the Dawn,core:The Silent Temple,Shrine of the Deep Stone
+```
+
+A landmark may take **both** a ward type and a zone, in either order — two tokens are an
+`and`, not a choice:
+
+```
+landmarks=cathedral:core:^The Temple of the Awoken Steel
 ```
 
 The ward names and zones are the same ones `districts` takes. Without a leading token a
