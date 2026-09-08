@@ -27,6 +27,25 @@ typedef WardPlacement = {
 	var ward : Class<Ward>;
 	var zone : PlacementZone;
 	var name : Null<String>;
+	// `NoMarker` unless the name was prefixed. A district is an area, so it
+	// is unmarked by default.
+	var marker : MarkerKind;
+}
+
+/**
+	What symbol, if any, marks a place on the map.
+
+	A district is an area and a landmark is a point, and most places are one or
+	the other — but not all. A temple that is an orchard is an area you can
+	also stand in front of, and it wants both: the ward's own drawing, and a
+	point to aim at.
+**/
+enum MarkerKind {
+	NoMarker;
+	// A filled dot. What every landmark had before there was a choice.
+	Dot;
+	// A ring — a round tower's footprint, which is how a plan draws one.
+	Tower;
 }
 
 /**
@@ -58,6 +77,9 @@ typedef Landmark = {
 	var name : String;
 	var ward : Null<Class<Ward>>;
 	var zone : Null<PlacementZone>;
+	// `Dot` unless the name was prefixed. A landmark is a point, so it is
+	// always marked by something.
+	var marker : MarkerKind;
 }
 
 /**
@@ -144,7 +166,8 @@ class CityOptions {
 				}
 			}
 
-			result.push( { name: text, ward: ward, zone: zone } );
+			var marked = readMarker( text, Dot );
+			result.push( { name: marked.name, ward: ward, zone: zone, marker: marked.marker } );
 		}
 
 		return result;
@@ -168,6 +191,35 @@ class CityOptions {
 		"gate"				=> GateWard,
 		"farm"				=> Farm
 	];
+
+	/**
+		Reads a symbol prefix off the front of a name.
+
+			*The Reaper's Orchard   — mark it with a dot
+			^The Temple of the Awoken Steel — mark it with a tower
+
+		One character rather than another field, because a name is everything
+		after the last spec token and may itself contain colons — there is no
+		room for a fourth field without taking that away.
+
+		⚠️ A name that genuinely starts with `*` or `^` cannot be written. That
+		is the trade, and it is a cheap one: no place in a city is called
+		"*Anything".
+	**/
+	public static function readMarker( name:String, fallback:MarkerKind ):{ name:String, marker:MarkerKind } {
+		if (name == null || name.length < 2)
+			return { name: name, marker: fallback };
+
+		var mark = switch (name.charAt( 0 )) {
+			case "*":	Dot;
+			case "^":	Tower;
+			default:	null;
+		}
+
+		return mark == null ?
+			{ name: name, marker: fallback } :
+			{ name: StringTools.trim( name.substr( 1 ) ), marker: mark };
+	}
 
 	public static var LABEL_MODES:Map<String, LabelMode> = [
 		"all"	=> AllLabels,
@@ -219,7 +271,8 @@ class CityOptions {
 			var name = parts.length > 2 ?
 				StringTools.trim( parts.slice( 2 ).join( ":" ) ) : "";
 
-			result.push( { ward: ward, zone: zone, name: name != "" ? name : null } );
+			var marked = readMarker( name != "" ? name : null, NoMarker );
+			result.push( { ward: ward, zone: zone, name: marked.name, marker: marked.marker } );
 		}
 
 		return result;

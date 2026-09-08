@@ -230,6 +230,31 @@ Landmarks avoid **hand-named** districts, since a name you wrote yourself is not
 to overwrite. Generated names are fair game — which makes naming a district the way to
 protect it from being taken over by a landmark.
 
+### Marking a place
+
+A district is an area and a landmark is a point, and most places are one or the other. Not
+all: a temple that is an orchard is an area you can also stand in front of. A **symbol
+prefix** on a name says which symbol marks it, in either parameter:
+
+| Prefix | Symbol | Default for |
+|---|---|---|
+| *(none)* | — | a district |
+| `*` | a filled dot | a landmark |
+| `^` | a ring — a round tower's footprint, as a plan draws one | — |
+
+```
+districts=park:city:*The Reaper's Orchard
+landmarks=cathedral:^The Temple of the Awoken Steel
+```
+
+A **marked district** keeps its ward's own drawing — the orchard is still drawn as a park —
+but its name moves out from across the patch to underneath the symbol, because a name
+fitted across a district does not read as belonging to the dot in the middle of it.
+
+⚠️ **One character rather than a fourth field.** A name is everything after the last spec
+token and may itself contain colons, so there is no room for another field without taking
+that away. The cost is that a name cannot *begin* with `*` or `^`.
+
 ### A player's copy
 
 `labels` decides how much of the map is written on:
@@ -316,7 +341,7 @@ Upstream's build reads only `size` and `seed`. This fork adds the rest:
 | `core` | 2–30 — patches inside the inner ring | 5 |
 | `river` | `0` / `1` | `0` |
 | `labels` | `all` / `named` / `none` | `all` |
-| `districts` | `ward:zone:Name,…` — zone and name both optional | none |
+| `districts` | `ward:zone:Name,…` — zone and name both optional, name may take a `*`/`^` prefix | none |
 | `name` | the settlement's name | generated |
 | `landmarks` | `ward:Name` / `zone:Name` / `Name`, comma-separated | none |
 

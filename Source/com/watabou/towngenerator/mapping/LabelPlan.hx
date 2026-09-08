@@ -4,6 +4,7 @@ import openfl.geom.Point;
 import openfl.geom.Rectangle;
 
 import com.watabou.towngenerator.building.CityOptions.LabelMode;
+import com.watabou.towngenerator.building.CityOptions.MarkerKind;
 import com.watabou.towngenerator.building.Model;
 import com.watabou.towngenerator.building.River;
 
@@ -21,8 +22,9 @@ typedef PlannedLabel = {
 	A landmark's dot, in map units.
 **/
 typedef Marker = {
-	var at	: Point;
-	var r	: Float;
+	var at		: Point;
+	var r		: Float;
+	var kind	: MarkerKind;
 }
 
 /**
@@ -75,9 +77,13 @@ class LabelPlan {
 	// size-24 city, where cityRadius is about 112.
 	static inline var LEGIBLE	= 0.032;
 
-	// A landmark's dot, and the gap between it and the name below it.
+	// A marker's radius, and the gap between it and the name below it.
 	static inline var MARKER	= 0.011;
 	static inline var GAP		= 0.010;
+
+	// A tower reads as a ring rather than a dot, so it needs to be bigger
+	// than one before the hole in the middle is visible at all.
+	static inline var TOWER		= 1.7;
 
 	public var labels	: Array<PlannedLabel>;
 	public var markers	: Array<Marker>;
@@ -128,33 +134,46 @@ class LabelPlan {
 		if (model.river != null)
 			plan.reserveWater( model.river );
 
-		// Landmarks next, because a landmark cannot be dropped: it is a place
-		// the caller asked for by name, and the dot is drawn whether the name
-		// fits or not. District labels are what gives way.
+		// Marked places next, because a marked place cannot be dropped: it is
+		// somewhere the caller asked for by name, and the symbol is drawn
+		// whether the name fits or not. District labels are what gives way.
+		//
+		// Two things land here. A **landmark** is a point, and its name
+		// supersedes whatever district it fell in. A **marked district** is an
+		// area that is also a point — a temple that is an orchard — and keeps
+		// its own name, printed under the symbol rather than fitted to the
+		// patch, because a name fitted across a patch does not read as
+		// belonging to the dot in the middle of it.
 		for (patch in model.patches) {
 			if (model.labels == NoLabels)
 				break;
-			if (!patch.withinCity || patch.ward == null || patch.landmark == null)
+			if (!patch.withinCity || patch.ward == null || patch.marker == NoMarker)
+				continue;
+
+			var name = patch.landmark != null ? patch.landmark : patch.ward.name;
+			if (name == null)
 				continue;
 
 			var centre = patch.shape.center;
-			plan.markers.push( { at: centre, r: r * MARKER } );
+			var symbol = patch.marker == Tower ? r * MARKER * TOWER : r * MARKER;
+			plan.markers.push( { at: centre, r: symbol, kind: patch.marker } );
 
 			var size = Math.max( r * LANDMARK, plan.floor );
 
 			// Measured out from the dot rather than set as a share of the
 			// radius: the size has a floor under it, so on a small town a
 			// fixed share put the name straight through its own marker.
-			var clearance = r * (MARKER + GAP) + size * LabelView.BOX_HEIGHT / 2;
+			var clearance = symbol + r * GAP + size * LabelView.BOX_HEIGHT / 2;
 
-			// Below the dot by default, above it when below is already taken —
-			// which is what two landmarks in neighbouring patches produce.
+			// Below the symbol by default, above it when below is already
+			// taken — which is what two marked places in neighbouring patches
+			// produce.
 			var below = new Point( centre.x, centre.y + clearance );
-			var at = plan.free( patch.landmark, below, size ) ?
+			var at = plan.free( name, below, size ) ?
 				below :
 				new Point( centre.x, centre.y - clearance );
 
-			plan.reserve( patch.landmark, at, 0, size );
+			plan.reserve( name, at, 0, size );
 		}
 
 		// Hand-named districts before generated ones, and insistently: a name
@@ -172,8 +191,10 @@ class LabelPlan {
 				continue;
 
 			for (patch in model.patches) {
+				// Anything with a symbol already had its name printed under
+				// it by the pass above.
 				if (!patch.withinCity || patch.ward == null ||
-					patch.landmark != null || patch.ward.name == null ||
+					patch.marker != NoMarker || patch.ward.name == null ||
 					patch.nameFromCaller != byCaller)
 					continue;
 

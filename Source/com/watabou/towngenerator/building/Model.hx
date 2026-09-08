@@ -13,6 +13,7 @@ import com.watabou.utils.Random;
 import com.watabou.towngenerator.wards.*;
 import com.watabou.towngenerator.building.CityOptions.Landmark;
 import com.watabou.towngenerator.building.CityOptions.LabelMode;
+import com.watabou.towngenerator.building.CityOptions.MarkerKind;
 import com.watabou.towngenerator.building.CityOptions.PlacementZone;
 import com.watabou.towngenerator.building.CityOptions.WardPlacement;
 
@@ -227,6 +228,7 @@ class Model {
 
 			var patch = candidates.random();
 			patch.landmark = landmark.name;
+			patch.marker = landmark.marker;
 			available.remove( patch );
 		}
 	}
@@ -699,6 +701,8 @@ class Model {
 			// zone the layout could not honour. `nameWards` leaves it alone.
 			best.ward.name = placement.name;
 			best.nameFromCaller = placement.name != null;
+			if (placement.name != null)
+				best.marker = placement.marker;
 			unassigned.remove( best );
 		}
 	}

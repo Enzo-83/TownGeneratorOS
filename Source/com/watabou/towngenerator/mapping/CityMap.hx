@@ -9,6 +9,7 @@ import openfl.geom.Point;
 import com.watabou.geom.Polygon;
 
 import com.watabou.towngenerator.wards.*;
+import com.watabou.towngenerator.building.CityOptions.MarkerKind;
 import com.watabou.towngenerator.building.CurtainWall;
 import com.watabou.towngenerator.building.Model;
 import com.watabou.towngenerator.building.River;
@@ -20,6 +21,9 @@ using com.watabou.utils.PointExtender;
 class CityMap extends Sprite {
 
 	public static var palette = Palette.DEFAULT;
+
+	// How much of a tower marker is the hole in the middle.
+	static inline var HOLE = 0.45;
 
 	private var patches	: Array<PatchView>;
 
@@ -120,10 +124,19 @@ class CityMap extends Sprite {
 		addChild( markers );
 
 		var mg = markers.graphics;
-		mg.beginFill( palette.dark );
-		for (marker in plan.markers)
+		for (marker in plan.markers) {
+			mg.beginFill( palette.dark );
 			mg.drawCircle( marker.at.x, marker.at.y, marker.r );
-		mg.endFill();
+			mg.endFill();
+
+			// A tower is a ring: the paper shows through the middle, which is
+			// how a plan draws a round tower rather than a solid post.
+			if (marker.kind == Tower) {
+				mg.beginFill( palette.paper );
+				mg.drawCircle( marker.at.x, marker.at.y, marker.r * HOLE );
+				mg.endFill();
+			}
+		}
 
 		var labels = new Sprite();
 		labels.mouseEnabled = false;

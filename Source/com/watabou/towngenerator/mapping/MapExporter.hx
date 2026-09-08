@@ -8,6 +8,7 @@ import openfl.utils.ByteArray;
 
 import com.watabou.geom.Polygon;
 
+import com.watabou.towngenerator.building.CityOptions.MarkerKind;
 import com.watabou.towngenerator.building.Model;
 import com.watabou.towngenerator.wards.*;
 
@@ -199,8 +200,13 @@ class MapExporter {
 
 		b.add( addScaleBar( model, colour ) );
 
-		for (marker in plan.markers)
+		var paperHole = hex( CityMap.palette.paper );
+		for (marker in plan.markers) {
 			b.add( '<circle cx="${f(marker.at.x)}" cy="${f(marker.at.y)}" r="${f(marker.r)}" fill="$colour"/>\n' );
+			// A ring, drawn as a hole punched in the disc — see CityMap.
+			if (marker.kind == Tower)
+				b.add( '<circle cx="${f(marker.at.x)}" cy="${f(marker.at.y)}" r="${f(marker.r * 0.45)}" fill="$paperHole"/>\n' );
+		}
 
 		// The halo the screen draws as eight offset copies is a stroke under
 		// the fill here. `paint-order` keeps it to one element per label, so
