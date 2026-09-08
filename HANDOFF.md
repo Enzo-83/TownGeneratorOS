@@ -290,6 +290,15 @@ right-click opens it, hovering highlights a row, and clicking one runs it. A har
 `Escape` does *not* arrive — dispatch it on `window` yourself, as below, before concluding
 the handler is broken.
 
+> ⛔ **A PNG exported while the browser pane is hidden comes back blank** — a
+> paper-coloured 2048x2048 with literally zero non-background pixels. Nothing is wrong
+> with the exporter. `MapExporter.downloadPng` calls `BitmapData.draw( map, … )`, and
+> OpenFL's html5 renderer rasterises on `requestAnimationFrame`; a hidden or backgrounded
+> pane never runs one, so there is nothing for `draw` to capture and you get only the fill
+> colour the bitmap was created with. **Front the pane and re-export before believing it.**
+> The SVG is unaffected, because it is written from the model rather than the display list
+> — which is a second reason to prefer it when checking anything.
+
 To verify the exporters end to end, intercept the download instead:
 
 ```js
