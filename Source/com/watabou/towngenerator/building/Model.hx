@@ -734,7 +734,12 @@ class Model {
 
 		return switch (zone) {
 			case Core:			patch.withinInnerWall;
-			case BetweenWalls:	!patch.withinInnerWall;
+			// ⚠️ Between the *walls* — inside the curtain wall as well as
+			// outside the inner ring. It used to test only the inner ring, so
+			// `withinCity` let it match the outskirts: a hospital could be
+			// sited beyond the city wall, which no one would have built.
+			// Without a curtain wall there is no outside to exclude.
+			case BetweenWalls:	(wall == null || patch.withinWalls) && !patch.withinInnerWall;
 			case WithinCity:	true;
 			case NextToPlaza:	plaza != null && patch.shape.borders( plaza.shape );
 			case Centre:		patch == centrePatch;

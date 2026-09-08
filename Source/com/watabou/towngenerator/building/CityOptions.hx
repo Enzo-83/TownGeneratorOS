@@ -8,7 +8,8 @@ import com.watabou.towngenerator.wards.*;
 enum PlacementZone {
 	// Inside the inner ring.
 	Core;
-	// Within the city, but outside the inner ring.
+	// Between the two walls: inside the curtain wall, outside the inner ring.
+	// With no curtain wall, simply outside the inner ring.
 	BetweenWalls;
 	// Anywhere inside the city.
 	WithinCity;
