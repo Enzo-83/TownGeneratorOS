@@ -205,10 +205,20 @@ class MapExporter {
 
 		var paperHole = hex( CityMap.palette.paper );
 		for (marker in plan.markers) {
-			b.add( '<circle cx="${f(marker.at.x)}" cy="${f(marker.at.y)}" r="${f(marker.r)}" fill="$colour"/>\n' );
-			// A ring, drawn as a hole punched in the disc — see CityMap.
-			if (marker.kind == Tower)
-				b.add( '<circle cx="${f(marker.at.x)}" cy="${f(marker.at.y)}" r="${f(marker.r * 0.45)}" fill="$paperHole"/>\n' );
+			var r = marker.r;
+			var hole = r * CityMap.HOLE;
+			var x = marker.at.x, y = marker.at.y;
+
+			// Same shapes the screen draws — see CityMap for why each is what
+			// it is.
+			if (marker.kind == Court) {
+				b.add( '<rect x="${f(x - r)}" y="${f(y - r)}" width="${f(r * 2)}" height="${f(r * 2)}" fill="$colour"/>\n' );
+				b.add( '<rect x="${f(x - hole)}" y="${f(y - hole)}" width="${f(hole * 2)}" height="${f(hole * 2)}" fill="$paperHole"/>\n' );
+			} else {
+				b.add( '<circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}" fill="$colour"/>\n' );
+				if (marker.kind == Tower)
+					b.add( '<circle cx="${f(x)}" cy="${f(y)}" r="${f(hole)}" fill="$paperHole"/>\n' );
+			}
 		}
 
 		// The halo the screen draws as eight offset copies is a stroke under

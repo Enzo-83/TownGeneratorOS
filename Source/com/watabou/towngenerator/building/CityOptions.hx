@@ -14,6 +14,9 @@ enum PlacementZone {
 	WithinCity;
 	// Sharing an edge with the central plaza.
 	NextToPlaza;
+	// The middle of the map: the plaza's own patch when there is one, and
+	// otherwise the patch nearest the centre.
+	Centre;
 }
 
 /**
@@ -27,6 +30,8 @@ typedef WardPlacement = {
 	var ward : Class<Ward>;
 	var zone : PlacementZone;
 	var name : Null<String>;
+	// Must share an edge with whatever was placed immediately before.
+	var beside : Bool;
 	// `NoMarker` unless the name was prefixed. A district is an area, so it
 	// is unmarked by default.
 	var marker : MarkerKind;
@@ -46,6 +51,9 @@ enum MarkerKind {
 	Dot;
 	// A ring — a round tower's footprint, which is how a plan draws one.
 	Tower;
+	// A square with the middle cut out: rooms around an open court, which is
+	// what a riad is and how a plan draws one.
+	Court;
 }
 
 /**
@@ -77,6 +85,8 @@ typedef Landmark = {
 	var name : String;
 	var ward : Null<Class<Ward>>;
 	var zone : Null<PlacementZone>;
+	// Must share an edge with whatever was placed immediately before.
+	var beside : Bool;
 	// `Dot` unless the name was prefixed. A landmark is a point, so it is
 	// always marked by something.
 	var marker : MarkerKind;
@@ -147,42 +157,11 @@ class CityOptions {
 			return result;
 
 		for (entry in spec.split( "," )) {
-			var text = StringTools.trim( entry );
-			if (text == "")
+			var read = readTokens( entry, Dot );
+			if (read.name == "")
 				continue;
 
-			var ward:Class<Ward> = null;
-			var zone:PlacementZone = null;
-
-			// Up to two leading tokens — a ward type and a zone, in either
-			// order — then the name. Both hold at once: `cathedral:core:X` is
-			// a cathedral *inside the inner ring*, not one or the other.
-			// Mirrors what `districts=ward:zone:Name` already reads.
-			for (pass in 0...2) {
-				var colon = text.indexOf( ":" );
-				if (colon <= 0)
-					break;
-
-				var token = StringTools.trim( text.substr( 0, colon ) ).toLowerCase();
-				var rest = StringTools.trim( text.substr( colon + 1 ) );
-				if (rest == "")
-					break;
-
-				var asWard = WARD_TYPES.get( token );
-				var asZone = ZONES.get( token );
-
-				if (asWard != null && ward == null)
-					ward = asWard
-				else if (asZone != null && zone == null)
-					zone = asZone
-				else
-					break;
-
-				text = rest;
-			}
-
-			var marked = readMarker( text, Dot );
-			result.push( { name: marked.name, ward: ward, zone: zone, marker: marked.marker } );
+			result.push( { name: read.name, ward: read.ward, zone: read.zone, marker: read.marker, beside: read.beside } );
 		}
 
 		return result;
@@ -208,32 +187,57 @@ class CityOptions {
 	];
 
 	/**
-		Reads a symbol prefix off the front of a name.
+		Eats the leading tokens off an entry and hands back what they said.
 
-			*The Reaper's Orchard   — mark it with a dot
-			^The Temple of the Awoken Steel — mark it with a tower
+		A token is a **ward type**, a **zone** or a **marker**, recognised by
+		which vocabulary it belongs to rather than by its position — so
+		`park:between:dot:The Orchard` and `dot:between:park:The Orchard` are
+		the same thing, and everything after the last one it recognises is the
+		name. A name may therefore still contain colons.
 
-		One character rather than another field, because a name is everything
-		after the last spec token and may itself contain colons — there is no
-		room for a fourth field without taking that away.
-
-		⚠️ A name that genuinely starts with `*` or `^` cannot be written. That
-		is the trade, and it is a cheap one: no place in a city is called
-		"*Anything".
+		⚠️ **This replaced a single-character prefix** (`*` a dot, `^` a tower).
+		One character stopped being readable at the third marker: a riad is a
+		real shape with a real name, and `court:` says so where `~` would not.
+		The cost is that a place cannot be *called* "core" or "tower" on its
+		own — which no place is, since a bare token has to be followed by a
+		colon and something else to count at all.
 	**/
-	public static function readMarker( name:String, fallback:MarkerKind ):{ name:String, marker:MarkerKind } {
-		if (name == null || name.length < 2)
-			return { name: name, marker: fallback };
+	static function readTokens( entry:String, marker:MarkerKind ):{ ward:Class<Ward>, zone:PlacementZone, marker:MarkerKind, beside:Bool, name:String } {
+		var text = StringTools.trim( entry );
 
-		var mark = switch (name.charAt( 0 )) {
-			case "*":	Dot;
-			case "^":	Tower;
-			default:	null;
+		var ward:Class<Ward> = null;
+		var zone:PlacementZone = null;
+		var beside = false;
+
+		while (true) {
+			var colon = text.indexOf( ":" );
+			if (colon <= 0)
+				break;
+
+			var token = StringTools.trim( text.substr( 0, colon ) ).toLowerCase();
+			var rest = StringTools.trim( text.substr( colon + 1 ) );
+			if (rest == "")
+				break;
+
+			var asWard = WARD_TYPES.get( token );
+			var asZone = ZONES.get( token );
+			var asMark = MARKERS.get( token );
+
+			if (token == BESIDE)
+				beside = true
+			else if (asWard != null && ward == null)
+				ward = asWard
+			else if (asZone != null && zone == null)
+				zone = asZone
+			else if (asMark != null)
+				marker = asMark
+			else
+				break;
+
+			text = rest;
 		}
 
-		return mark == null ?
-			{ name: name, marker: fallback } :
-			{ name: StringTools.trim( name.substr( 1 ) ), marker: mark };
+		return { ward: ward, zone: zone, marker: marker, beside: beside, name: text };
 	}
 
 	public static var LABEL_MODES:Map<String, LabelMode> = [
@@ -246,7 +250,27 @@ class CityOptions {
 		"core"		=> Core,
 		"between"	=> BetweenWalls,
 		"city"		=> WithinCity,
-		"plaza"		=> NextToPlaza
+		"plaza"		=> NextToPlaza,
+		"centre"	=> Centre,
+		"center"	=> Centre
+	];
+
+	/**
+		`next` is a modifier, not a zone.
+
+		⚠️ It was a zone first, and that was wrong: a zone is one slot, so
+		`core:next:` could not be both and the parser stopped at the second
+		token and swallowed the rest into the name. "Beside the last thing" is
+		a *further* condition on a placement, not an alternative to saying
+		where it is — `core:next:` has to mean **in the core and beside it**.
+	**/
+	public static inline var BESIDE = "next";
+
+	public static var MARKERS:Map<String, MarkerKind> = [
+		"none"	=> NoMarker,
+		"dot"	=> Dot,
+		"tower"	=> Tower,
+		"court"	=> Court
 	];
 
 	/**
@@ -270,24 +294,19 @@ class CityOptions {
 			return result;
 
 		for (entry in spec.split( "," )) {
-			var parts = StringTools.trim( entry ).split( ":" );
-
-			var ward = WARD_TYPES.get( StringTools.trim( parts[0] ).toLowerCase() );
-			if (ward == null)
+			// A district with no ward type is nothing to place, so an unknown
+			// first token costs you that district rather than the whole map.
+			var read = readTokens( entry, NoMarker );
+			if (read.ward == null)
 				continue;
 
-			var zone = parts.length > 1 ?
-				ZONES.get( StringTools.trim( parts[1] ).toLowerCase() ) : WithinCity;
-			if (zone == null)
-				zone = WithinCity;
-
-			// Everything after the zone is the name, rejoined, so a colon in
-			// "St Mark: the Elder" survives the split.
-			var name = parts.length > 2 ?
-				StringTools.trim( parts.slice( 2 ).join( ":" ) ) : "";
-
-			var marked = readMarker( name != "" ? name : null, NoMarker );
-			result.push( { ward: ward, zone: zone, name: marked.name, marker: marked.marker } );
+			result.push( {
+				ward:	read.ward,
+				zone:	read.zone != null ? read.zone : WithinCity,
+				name:	read.name != "" ? read.name : null,
+				marker:	read.marker,
+				beside:	read.beside
+			} );
 		}
 
 		return result;

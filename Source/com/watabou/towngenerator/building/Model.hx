@@ -83,6 +83,10 @@ class Model {
 	// The patches the inner ring encloses.
 	public var core		: Array<Patch>;
 
+	// The patch at the middle of the map — the plaza's own, when there is one.
+	// What the `centre` zone means.
+	public var centrePatch	: Patch;
+
 	// How much of this map gets written on. Read by `LabelPlan` when the map
 	// is drawn; nothing in generation looks at it.
 	public var labels	: LabelMode;
@@ -212,12 +216,14 @@ class Model {
 			return p.withinCity && p.ward != null && p.ward.name != null &&
 				!p.nameFromCaller );
 
+		var previous:Patch = null;
+
 		for (landmark in landmarks) {
 			if (available.length == 0)
 				break;
 
 			var candidates = available.filter(
-				function( patch:Patch ) return suits( patch, landmark ) );
+				function( patch:Patch ) return suits( patch, landmark, previous ) );
 
 			if (candidates.length == 0) {
 				if (landmark.ward != null || landmark.zone != null)
@@ -229,16 +235,19 @@ class Model {
 			var patch = candidates.random();
 			patch.landmark = landmark.name;
 			patch.marker = landmark.marker;
+			previous = patch;
 			available.remove( patch );
 		}
 	}
 
 	// Both constraints hold when both are given: a landmark asked for a ward
 	// type *and* a zone wants a patch that is both.
-	private function suits( patch:Patch, landmark:Landmark ):Bool {
+	private function suits( patch:Patch, landmark:Landmark, previous:Patch ):Bool {
 		if (landmark.ward != null && Type.getClass( patch.ward ) != landmark.ward)
 			return false;
-		if (landmark.zone != null && !matchesZone( patch, landmark.zone ))
+		if (landmark.zone != null && !matchesZone( patch, landmark.zone, previous ))
+			return false;
+		if (landmark.beside && !isBeside( patch, previous ))
 			return false;
 		return true;
 	}
@@ -302,6 +311,7 @@ class Model {
 
 			if (count == 0) {
 				center = patch.shape.min( function( p:Point ) return p.length );
+				centrePatch = patch;
 				if (plazaNeeded)
 					plaza = patch;
 			} else if (count == nPatches && citadelNeeded) {
@@ -671,14 +681,17 @@ class Model {
 	private function placeWards( unassigned:Array<Patch> ):Void {
 		placementWarnings = [];
 
+		var previous:Patch = null;
+
 		for (placement in placements) {
 			var type = Type.getClassName( placement.ward ).split( "." ).pop();
 			// Warnings name the district the way the caller asked for it,
 			// so "The Velvet Road" is findable in the list they wrote.
 			var label = placement.name != null ? '${placement.name} ($type)' : type;
 
-			var candidates = unassigned.filter(
-				function( patch:Patch ) return matchesZone( patch, placement.zone ) );
+			var candidates = unassigned.filter( function( patch:Patch )
+				return matchesZone( patch, placement.zone, previous ) &&
+					(!placement.beside || isBeside( patch, previous )) );
 
 			if (candidates.length == 0) {
 				candidates = unassigned.filter( function( patch:Patch ) return patch.withinCity );
@@ -705,11 +718,17 @@ class Model {
 			best.nameFromCaller = placement.name != null;
 			if (placement.name != null)
 				best.marker = placement.marker;
+			previous = best;
 			unassigned.remove( best );
 		}
 	}
 
-	private function matchesZone( patch:Patch, zone:PlacementZone ):Bool {
+	/**
+		`previous` is whatever this pass placed last, which is what the
+		`Adjacent` zone is measured against — the one zone that is relative
+		rather than absolute.
+	**/
+	private function matchesZone( patch:Patch, zone:PlacementZone, previous:Patch ):Bool {
 		if (!patch.withinCity)
 			return false;
 
@@ -718,8 +737,15 @@ class Model {
 			case BetweenWalls:	!patch.withinInnerWall;
 			case WithinCity:	true;
 			case NextToPlaza:	plaza != null && patch.shape.borders( plaza.shape );
+			case Centre:		patch == centrePatch;
 		}
 	}
+
+	// "Beside the last thing placed" — a further condition on a placement
+	// rather than an alternative to saying where it is, so it is tested
+	// alongside the zone and not instead of it.
+	private function isBeside( patch:Patch, previous:Patch ):Bool
+		return previous != null && patch.shape.borders( previous.shape );
 
 	private function buildGeometry():Void {
 		for (patch in patches)

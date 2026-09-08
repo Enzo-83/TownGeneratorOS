@@ -22,8 +22,8 @@ class CityMap extends Sprite {
 
 	public static var palette = Palette.DEFAULT;
 
-	// How much of a tower marker is the hole in the middle.
-	static inline var HOLE = 0.45;
+	// How much of a tower or court marker is the hole in the middle.
+	public static inline var HOLE = 0.45;
 
 	// The inner ring's dash, in map units.
 	public static inline var DASH	= 2.0;
@@ -128,16 +128,27 @@ class CityMap extends Sprite {
 		addChild( markers );
 
 		var mg = markers.graphics;
+		// Round things are drawn round and square things square, and the two
+		// with a hole in the middle are the two that have one: a tower's shaft
+		// and a riad's open court.
 		for (marker in plan.markers) {
+			var r = marker.r;
+			var hole = r * HOLE;
+
 			mg.beginFill( palette.dark );
-			mg.drawCircle( marker.at.x, marker.at.y, marker.r );
+			if (marker.kind == Court)
+				mg.drawRect( marker.at.x - r, marker.at.y - r, r * 2, r * 2 )
+			else
+				mg.drawCircle( marker.at.x, marker.at.y, r );
 			mg.endFill();
 
-			// A tower is a ring: the paper shows through the middle, which is
-			// how a plan draws a round tower rather than a solid post.
 			if (marker.kind == Tower) {
 				mg.beginFill( palette.paper );
-				mg.drawCircle( marker.at.x, marker.at.y, marker.r * HOLE );
+				mg.drawCircle( marker.at.x, marker.at.y, hole );
+				mg.endFill();
+			} else if (marker.kind == Court) {
+				mg.beginFill( palette.paper );
+				mg.drawRect( marker.at.x - hole, marker.at.y - hole, hole * 2, hole * 2 );
 				mg.endFill();
 			}
 		}

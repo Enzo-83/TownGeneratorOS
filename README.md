@@ -207,14 +207,9 @@ An entry may lead with a **ward type** or a **zone**, saying where it belongs:
 landmarks=cathedral:Temple of the Dawn,core:The Silent Temple,Shrine of the Deep Stone
 ```
 
-A landmark may take **both** a ward type and a zone, in either order — two tokens are an
-`and`, not a choice:
-
-```
-landmarks=cathedral:core:^The Temple of the Awoken Steel
-```
-
-The ward names and zones are the same ones `districts` takes. Without a leading token a
+A landmark may take **any** of the tokens above, in any order — they are an `and`, not a
+choice, so `cathedral:core:tower:X` is a cathedral, inside the inner ring, drawn as a
+tower. Without a leading token a
 landmark is **scattered**, which reproduces the released generator's behaviour and is what
 every landmark here did before placements existed — so an untouched landmark list lands
 exactly where it always did.
@@ -241,30 +236,37 @@ Landmarks avoid **hand-named** districts, since a name you wrote yourself is not
 to overwrite. Generated names are fair game — which makes naming a district the way to
 protect it from being taken over by a landmark.
 
-### Marking a place
+### Tokens
 
-A district is an area and a landmark is a point, and most places are one or the other. Not
-all: a temple that is an orchard is an area you can also stand in front of. A **symbol
-prefix** on a name says which symbol marks it, in either parameter:
+Both `districts` and `landmarks` read the same leading tokens, recognised by which
+vocabulary they belong to rather than by position — so the order does not matter, and
+everything after the last token it recognises is the name.
 
-| Prefix | Symbol | Default for |
-|---|---|---|
-| *(none)* | — | a district |
-| `*` | a filled dot | a landmark |
-| `^` | a ring — a round tower's footprint, as a plan draws one | — |
+| Kind | Tokens |
+|---|---|
+| Ward | `craftsmen` `merchant` `cathedral` `administration` `slum` `patriciate` `market` `military` `park` `gate` `farm` |
+| Zone | `core` `between` `city` `plaza` `centre` |
+| Marker | `none` `dot` `tower` `court` |
+| Modifier | `next` |
 
 ```
-districts=park:city:*The Reaper's Orchard
-landmarks=cathedral:^The Temple of the Awoken Steel
+districts=park:between:dot:The Reaper's Orchard
+landmarks=core:tower:The Temple of the Awoken Steel,next:The Paper Guild
 ```
+
+`centre` is the middle of the map — the plaza's own patch when there is one. `next` means
+**beside whatever was placed immediately before**, and it is a *modifier*, not a zone:
+`core:next:` is "in the core **and** beside the last one". ⚠️ It was a zone first, and that
+was wrong — a zone is one slot, so `core:next:` could not be both and the parser stopped at
+the second token and swallowed the rest into the name.
 
 A **marked district** keeps its ward's own drawing — the orchard is still drawn as a park —
 but its name moves out from across the patch to underneath the symbol, because a name
 fitted across a district does not read as belonging to the dot in the middle of it.
 
-⚠️ **One character rather than a fourth field.** A name is everything after the last spec
-token and may itself contain colons, so there is no room for another field without taking
-that away. The cost is that a name cannot *begin* with `*` or `^`.
+⚠️ **These were single characters first** (`*` a dot, `^` a tower). One character stopped
+being readable at the third marker: a riad is a real shape with a real name, and `court:`
+says so where `~` would not.
 
 ### A player's copy
 

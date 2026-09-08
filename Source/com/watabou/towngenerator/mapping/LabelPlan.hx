@@ -81,9 +81,9 @@ class LabelPlan {
 	static inline var MARKER	= 0.011;
 	static inline var GAP		= 0.010;
 
-	// A tower reads as a ring rather than a dot, so it needs to be bigger
-	// than one before the hole in the middle is visible at all.
-	static inline var TOWER		= 1.7;
+	// A tower and a court both read as an outline round a hole, so they need
+	// to be bigger than a dot before the hole is visible at all.
+	static inline var SYMBOL	= 1.7;
 
 	public var labels	: Array<PlannedLabel>;
 	public var markers	: Array<Marker>;
@@ -155,7 +155,7 @@ class LabelPlan {
 				continue;
 
 			var centre = patch.shape.center;
-			var symbol = patch.marker == Tower ? r * MARKER * TOWER : r * MARKER;
+			var symbol = patch.marker == Dot ? r * MARKER : r * MARKER * SYMBOL;
 			plan.markers.push( { at: centre, r: symbol, kind: patch.marker } );
 
 			var size = Math.max( r * LANDMARK, plan.floor );
