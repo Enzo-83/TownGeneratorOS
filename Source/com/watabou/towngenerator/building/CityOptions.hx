@@ -30,6 +30,24 @@ typedef WardPlacement = {
 }
 
 /**
+	How much of the map is written on.
+
+	The generated district names are the generator's own invention — colour for
+	a GM's copy. The ones the caller typed, and the landmarks, are the places
+	the world actually has. Splitting on that line is what makes a player's
+	copy possible, and it costs nothing, because `Patch.nameFromCaller` already
+	knows which is which.
+**/
+enum LabelMode {
+	// Everything: generated district names, named ones, landmarks.
+	AllLabels;
+	// Only what the caller named, plus landmarks. A player's copy.
+	NamedOnly;
+	// The settlement's name and the scale bar, nothing else.
+	NoLabels;
+}
+
+/**
 	A point of interest, and where the caller wants it.
 
 	`ward` and `zone` are alternatives, not a pair: a landmark says either what
@@ -63,6 +81,11 @@ class CityOptions {
 	public var innerWall	: Bool = false;
 	// How many patches the inner ring encloses.
 	public var coreSize		: Int = 5;
+
+	// How much of the map is labelled. Purely presentational: it is read when
+	// the map is drawn, never while it is generated, so it cannot move a
+	// single building.
+	public var labels		: LabelMode = AllLabels;
 
 	// A river across the map. Off unless asked for, and deliberately not
 	// rolled: a roll would have to come out of the city's own random sequence
@@ -144,6 +167,12 @@ class CityOptions {
 		"park"				=> Park,
 		"gate"				=> GateWard,
 		"farm"				=> Farm
+	];
+
+	public static var LABEL_MODES:Map<String, LabelMode> = [
+		"all"	=> AllLabels,
+		"named"	=> NamedOnly,
+		"none"	=> NoLabels
 	];
 
 	public static var ZONES:Map<String, PlacementZone> = [

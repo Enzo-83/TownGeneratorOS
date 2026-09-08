@@ -18,6 +18,7 @@ Working notes for picking this fork up cold. The [README](README.md) says what t
 - **A right-click menu** — sizes, reroll, walls/ring/citadel/plaza/river toggles, exports
 - **A river**, opt-in, that provably does not change the city it runs through
 - **Fields on farms**, which upstream left as a bare farmhouse in an empty patch
+- **`labels=all|named|none`** — a player's copy, without the generated district names
 
 ---
 

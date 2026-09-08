@@ -12,6 +12,7 @@ import com.watabou.utils.Random;
 
 import com.watabou.towngenerator.wards.*;
 import com.watabou.towngenerator.building.CityOptions.Landmark;
+import com.watabou.towngenerator.building.CityOptions.LabelMode;
 import com.watabou.towngenerator.building.CityOptions.PlacementZone;
 import com.watabou.towngenerator.building.CityOptions.WardPlacement;
 
@@ -81,6 +82,10 @@ class Model {
 	// The patches the inner ring encloses.
 	public var core		: Array<Patch>;
 
+	// How much of this map gets written on. Read by `LabelPlan` when the map
+	// is drawn; nothing in generation looks at it.
+	public var labels	: LabelMode;
+
 	// The river, when there is one. Null is the default and the whole point:
 	// see River's own comment for why it can only ever be an afterthought.
 	public var river	: River;
@@ -140,6 +145,7 @@ class Model {
 		innerWallNeeded	= opts.innerWall;
 		coreSize		= opts.coreSize;
 		riverNeeded		= opts.river;
+		labels			= opts.labels != null ? opts.labels : AllLabels;
 		placements		= opts.placements != null ? opts.placements : [];
 		landmarks		= opts.landmarks != null ? opts.landmarks : [];
 

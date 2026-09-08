@@ -3,6 +3,7 @@ package com.watabou.towngenerator.mapping;
 import openfl.geom.Point;
 import openfl.geom.Rectangle;
 
+import com.watabou.towngenerator.building.CityOptions.LabelMode;
 import com.watabou.towngenerator.building.Model;
 import com.watabou.towngenerator.building.River;
 
@@ -103,11 +104,18 @@ class LabelPlan {
 
 		plan.floor = r * LEGIBLE;
 
+		// The settlement's name survives every mode: a map with nothing written
+		// on it at all is not a player's copy of anywhere.
 		if (model.cityName != null) {
 			plan.reserve( model.cityName, new Point( 0, -r * 1.16 ), 0, r * TITLE );
-			plan.reserve(
-				'~${CityMap.thousands( model.population )} people · ${CityMap.thousands( model.buildingCount )} buildings',
-				new Point( 0, -r * 1.05 ), 0, r * SUBTITLE );
+
+			// The population line does not survive. It is a readout of what
+			// the generator built rather than something anyone in the world
+			// would write on a map, and a player's copy is where that shows.
+			if (model.labels == AllLabels)
+				plan.reserve(
+					'~${CityMap.thousands( model.population )} people · ${CityMap.thousands( model.buildingCount )} buildings',
+					new Point( 0, -r * 1.05 ), 0, r * SUBTITLE );
 		}
 
 		var bar = scaleBar( model );
@@ -124,6 +132,8 @@ class LabelPlan {
 		// the caller asked for by name, and the dot is drawn whether the name
 		// fits or not. District labels are what gives way.
 		for (patch in model.patches) {
+			if (model.labels == NoLabels)
+				break;
 			if (!patch.withinCity || patch.ward == null || patch.landmark == null)
 				continue;
 
@@ -149,7 +159,18 @@ class LabelPlan {
 
 		// Hand-named districts before generated ones, and insistently: a name
 		// the caller typed is the one label that must not silently disappear.
-		for (byCaller in [true, false])
+		//
+		// This is also where a player's copy gets made. `named` keeps the pass
+		// the caller wrote and drops the one the generator invented; `none`
+		// drops both. ⚠️ Neither is generation — the wards still carry their
+		// names, they simply are not printed, so the same seed and the same
+		// URL still describe the same city.
+		for (byCaller in [true, false]) {
+			if (model.labels == NoLabels)
+				break;
+			if (model.labels == NamedOnly && !byCaller)
+				continue;
+
 			for (patch in model.patches) {
 				if (!patch.withinCity || patch.ward == null ||
 					patch.landmark != null || patch.ward.name == null ||
@@ -166,6 +187,7 @@ class LabelPlan {
 				else
 					plan.reserve( name, placement.at, placement.angle, placement.size );
 			}
+		}
 
 		return plan;
 	}

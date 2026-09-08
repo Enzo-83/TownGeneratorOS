@@ -87,6 +87,17 @@ class TownScene extends Scene {
 		toggle( menu, "River", model.river != null,
 			function( on ) { StateManager.river = on; regenerate(); } );
 
+		menu.item( "Labels", StateManager.labels, function() {
+			// Three states, so it cycles rather than toggling: the whole map,
+			// then only the names the caller wrote, then none at all.
+			StateManager.labels = switch (StateManager.labels) {
+				case "all":		"named";
+				case "named":	"none";
+				default:		"all";
+			};
+			regenerate();
+		} );
+
 		menu.separator();
 
 		menu.item( "Save SVG", null, function() MapExporter.downloadSvg( Model.instance ) );

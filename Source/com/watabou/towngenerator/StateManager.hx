@@ -20,6 +20,7 @@ class StateManager {
 	private static inline var INNER_WALL	= "innerwall";
 	private static inline var CORE			= "core";
 	private static inline var RIVER			= "river";
+	private static inline var LABELS		= "labels";
 	private static inline var DISTRICTS		= "districts";
 	private static inline var LANDMARKS		= "landmarks";
 
@@ -36,6 +37,8 @@ class StateManager {
 	public static var innerWall	: Bool = false;
 	public static var coreSize	: Int = 5;
 	public static var river		: Bool = false;
+	// "all", "named" or "none". Kept as written so it goes back in the URL.
+	public static var labels	: String = "all";
 	// Kept as written so it can be put back in the URL verbatim.
 	public static var districts	: String = "";
 	// Comma-separated points of interest.
@@ -63,6 +66,10 @@ class StateManager {
 
 			var river1 = boolParam( params, RIVER );
 			if (river1 != null) river = river1;
+
+			var labels1 = params.get( LABELS );
+			if (labels1 != null && CityOptions.LABEL_MODES.exists( labels1.toLowerCase() ))
+				labels = labels1.toLowerCase();
 
 			var districts1 = params.get( DISTRICTS );
 			if (districts1 != null) districts = districts1;
@@ -97,6 +104,7 @@ class StateManager {
 		options.innerWall	= innerWall;
 		options.coreSize	= coreSize;
 		options.river		= river;
+		options.labels		= CityOptions.LABEL_MODES.get( labels );
 		options.placements	= CityOptions.parsePlacements( districts );
 		options.landmarks	= CityOptions.parseLandmarks( landmarks );
 
@@ -138,6 +146,7 @@ class StateManager {
 			search2 += '&$CORE=$coreSize';
 		}
 		if (river)				search2 += '&$RIVER=1';
+		if (labels != "all")	search2 += '&$LABELS=$labels';
 		if (districts != "")	search2 += '&$DISTRICTS=' + StringTools.urlEncode( districts );
 		if (name != "")			search2 += '&$NAME=' + StringTools.urlEncode( name );
 		if (landmarks != "")	search2 += '&$LANDMARKS=' + StringTools.urlEncode( landmarks );

@@ -230,6 +230,30 @@ Landmarks avoid **hand-named** districts, since a name you wrote yourself is not
 to overwrite. Generated names are fair game — which makes naming a district the way to
 protect it from being taken over by a landmark.
 
+### A player's copy
+
+`labels` decides how much of the map is written on:
+
+| Value | Prints |
+|---|---|
+| `all` (default) | Everything: generated district names, named ones, landmarks, the population line |
+| `named` | Only the districts **you** named, plus landmarks — and the settlement's name |
+| `none` | The settlement's name and the scale bar, nothing else |
+
+The split `named` uses is one the generator already knows: `Patch.nameFromCaller`. The
+generated district names are the generator's own invention, colour for a GM's copy; the
+ones you typed and the landmarks are the places the world actually has. So a player's copy
+falls out of the data rather than needing a second map.
+
+**The population line goes with the generated names.** It is a readout of what the
+generator built — "739 buildings" — rather than something anyone in the world would write
+on a map, and a player's copy is where that shows.
+
+⚠️ **This is presentational only.** The wards still carry their names; they simply are not
+printed. The same seed and the same URL describe the same city in every mode — verified:
+the `buildings`, `roads`, `walls` and `fields` groups of the exported SVG hash identically
+across all three.
+
 ### Export
 
 | Key | Writes |
@@ -291,6 +315,7 @@ Upstream's build reads only `size` and `seed`. This fork adds the rest:
 | `innerwall` | `0` / `1` | `0` |
 | `core` | 2–30 — patches inside the inner ring | 5 |
 | `river` | `0` / `1` | `0` |
+| `labels` | `all` / `named` / `none` | `all` |
 | `districts` | `ward:zone:Name,…` — zone and name both optional | none |
 | `name` | the settlement's name | generated |
 | `landmarks` | `ward:Name` / `zone:Name` / `Name`, comma-separated | none |
